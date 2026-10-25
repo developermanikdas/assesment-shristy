@@ -127,6 +127,7 @@ export interface ResponseRecord {
     editTimeline: Array<{ ts: string; length: number }>;
   };
   audioGridFsId?: string;
+  audioDurationSeconds?: number;
   lastSavedAt: string;
 }
 
@@ -155,12 +156,15 @@ export interface SectionScoreSummary {
 
 export interface TopicBreakdown {
   topic: string;
+  n: number;
   attempted: number;
   correct: number;
   wrong: number;
   total: number;
   accuracy: number;
   band: 'green' | 'amber' | 'red';
+  label: string;
+  isLowData?: boolean;
 }
 
 export interface DifficultyBreakdown {

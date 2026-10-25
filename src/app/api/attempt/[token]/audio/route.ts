@@ -14,6 +14,7 @@ export async function POST(
     const formData = await req.formData();
     const file = formData.get('audio') as File | null;
     const itemId = (formData.get('itemId') as string) || 'D09';
+    const duration = Math.max(0, Number(formData.get('duration')) || 0);
 
     if (!file) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
@@ -44,6 +45,7 @@ export async function POST(
         contentType: file.type || 'audio/webm',
         uploadedAt: new Date(),
         sizeBytes: buffer.length,
+        durationSeconds: duration,
       },
     });
 
@@ -53,7 +55,7 @@ export async function POST(
 
     const fileId = uploadStream.id.toString();
 
-    // Link fileId to ResponseModel
+    // Link fileId and duration to ResponseModel
     const now = new Date();
     await ResponseModel.findOneAndUpdate(
       { attemptId: attempt._id.toString(), itemId },
@@ -62,6 +64,7 @@ export async function POST(
           partId: 'D',
           sectionId: 'D',
           audioGridFsId: fileId,
+          audioDurationSeconds: duration,
           selected: '[Audio Note Uploaded]',
           skipped: false,
           lastSavedAt: now,
@@ -70,7 +73,7 @@ export async function POST(
       { upsert: true, new: true }
     );
 
-    return NextResponse.json({ success: true, audioId: fileId });
+    return NextResponse.json({ success: true, audioId: fileId, duration });
   } catch (err: any) {
     console.error('Audio upload error:', err);
     return NextResponse.json({ error: 'Failed to upload audio recording' }, { status: 500 });

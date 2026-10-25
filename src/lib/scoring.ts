@@ -192,14 +192,21 @@ export function computeMCQScores(
     if (acc >= 70) band = 'green';
     else if (acc >= 45) band = 'amber';
 
+    const n = stats.total;
+    const isLowData = n < 3;
+    const label = isLowData ? 'low data' : band;
+
     return {
       topic,
+      n,
       attempted: stats.attempted,
       correct: stats.correct,
       wrong: stats.wrong,
       total: stats.total,
       accuracy: Math.round(acc * 10) / 10,
       band,
+      label,
+      isLowData,
     };
   });
 
@@ -258,18 +265,57 @@ export function computeMCQScores(
 
 export function computeStaminaCurve(
   examStartTime: Date | string,
-  items: ScoreItemInput[]
+  items: ScoreItemInput[],
+  sectionTimers?: Array<{
+    sectionId: string;
+    startedAt?: Date | string;
+    submittedAt?: Date | string;
+    durationSeconds?: number;
+    status?: string;
+  }>
 ): StaminaWindow[] {
   const startMs = new Date(examStartTime).getTime();
   const windowMs = 30 * 60 * 1000; // 30 minutes
   const windows: Record<number, { count: number; correct: number; totalSeconds: number }> = {};
+
+  // Extract break intervals to exclude from exam stamina timeline
+  const breaks: Array<{ start: number; end: number }> = [];
+  if (sectionTimers && Array.isArray(sectionTimers)) {
+    for (const st of sectionTimers) {
+      const isBreakSection =
+        st.sectionId === 'BREAK1' ||
+        st.sectionId === 'BREAK2' ||
+        st.sectionId.toUpperCase().includes('BREAK');
+
+      if (isBreakSection && st.startedAt) {
+        const bStart = new Date(st.startedAt).getTime();
+        const bEnd = st.submittedAt
+          ? new Date(st.submittedAt).getTime()
+          : bStart + (st.durationSeconds || 0) * 1000;
+        if (bEnd > bStart) {
+          breaks.push({ start: bStart, end: bEnd });
+        }
+      }
+    }
+  }
 
   for (const item of items) {
     if (!item.firstAnswerTs || item.skipped || item.selected === undefined || item.selected === null) {
       continue;
     }
     const ansMs = new Date(item.firstAnswerTs).getTime();
-    const elapsedMs = Math.max(0, ansMs - startMs);
+    let elapsedMs = Math.max(0, ansMs - startMs);
+
+    // Exclude break durations that occurred between exam start and this answer
+    let breakMs = 0;
+    for (const b of breaks) {
+      const overlapStart = Math.max(startMs, b.start);
+      const overlapEnd = Math.min(ansMs, b.end);
+      if (overlapEnd > overlapStart) {
+        breakMs += overlapEnd - overlapStart;
+      }
+    }
+    elapsedMs = Math.max(0, elapsedMs - breakMs);
     const winIdx = Math.floor(elapsedMs / windowMs);
 
     if (!windows[winIdx]) {
@@ -277,7 +323,7 @@ export function computeStaminaCurve(
     }
     windows[winIdx].count++;
     windows[winIdx].totalSeconds += item.timeSpentSeconds || 0;
-    if (String(item.selected).toUpperCase().trim() === String(item.ans).toUpperCase().trim()) {
+    if (item.ans && String(item.selected).toUpperCase().trim() === String(item.ans).toUpperCase().trim()) {
       windows[winIdx].correct++;
     }
   }

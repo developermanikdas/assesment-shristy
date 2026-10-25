@@ -408,10 +408,22 @@ export default function AttemptDetailPage() {
                       className={`p-3.5 rounded-xl border flex items-center justify-between ${bandColor}`}
                     >
                       <div>
-                        <span className="font-bold text-xs capitalize block">
-                          {item.topic.replace('-', ' ')}
-                        </span>
-                        <span className="text-[11px] opacity-80">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-bold text-xs capitalize block">
+                            {item.topic.replace('-', ' ')}
+                          </span>
+                          {item.n !== undefined && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                              n={item.n}
+                            </span>
+                          )}
+                          {(item.label === 'low data' || item.isLowData || (item.n !== undefined && item.n < 3)) && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-950/80 border border-yellow-700/60 text-yellow-300 font-semibold uppercase tracking-wider">
+                              low data
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] opacity-80 block mt-0.5">
                           {item.correct} correct / {item.attempted} attempted ({item.total} total)
                         </span>
                       </div>
@@ -838,11 +850,19 @@ export default function AttemptDetailPage() {
                   <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center space-x-3">
                     <Volume2 className="w-5 h-5 text-amber-400 flex-shrink-0" />
                     <div className="flex-1">
-                      <span className="text-xs font-semibold text-slate-200 block mb-1">
-                        Candidate Voice Note Recording (D09):
-                      </span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-slate-200">
+                          Candidate Voice Note Recording (D09):
+                        </span>
+                        {item.audioDurationSeconds ? (
+                          <span className="text-[11px] text-amber-400 font-mono">
+                            Duration: {item.audioDurationSeconds}s
+                          </span>
+                        ) : null}
+                      </div>
                       <audio
                         controls
+                        preload="metadata"
                         src={`/api/admin/audio/${item.audioGridFsId}`}
                         className="w-full h-8 rounded"
                       />

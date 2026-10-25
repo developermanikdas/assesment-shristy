@@ -40,6 +40,7 @@ interface ExamModeProps {
       reason?: string;
       choiceIndex?: number;
       writingStats?: any;
+      timeSpentSeconds?: number;
     }
   ) => void;
   onSubmitSection: () => void;
@@ -80,6 +81,108 @@ export const ExamMode: React.FC<ExamModeProps> = ({
   const [editTimeline, setEditTimeline] = useState<Array<{ ts: string; length: number }>>([]);
 
   const textDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Time tracking: visible time per question, pausing on tab blur/window blur/hidden
+  const timeSpentMapRef = useRef<Record<string, number>>({});
+  const activeStartTimeRef = useRef<number | null>(Date.now());
+  const isTabVisibleRef = useRef<boolean>(true);
+
+  // Sync saved timeSpentSeconds from savedResponses
+  useEffect(() => {
+    Object.entries(savedResponses).forEach(([id, r]) => {
+      if (
+        r?.timeSpentSeconds &&
+        (timeSpentMapRef.current[id] === undefined || timeSpentMapRef.current[id] < r.timeSpentSeconds)
+      ) {
+        timeSpentMapRef.current[id] = r.timeSpentSeconds;
+      }
+    });
+  }, [savedResponses]);
+
+  // Flush active time for a question
+  const flushActiveTime = useCallback(
+    (targetQuestionId?: string) => {
+      const q = targetQuestionId || currentQuestion?.id;
+      if (!q) return 0;
+      if (isTabVisibleRef.current && activeStartTimeRef.current !== null) {
+        const now = Date.now();
+        const elapsedSec = Math.max(0, Math.floor((now - activeStartTimeRef.current) / 1000));
+        if (elapsedSec > 0) {
+          timeSpentMapRef.current[q] = (timeSpentMapRef.current[q] || 0) + elapsedSec;
+          activeStartTimeRef.current = now;
+        }
+      }
+      return timeSpentMapRef.current[q] || 0;
+    },
+    [currentQuestion?.id]
+  );
+
+  // Listen to tab blur, window blur, and visibility change
+  useEffect(() => {
+    const handleBlur = () => {
+      flushActiveTime();
+      isTabVisibleRef.current = false;
+      activeStartTimeRef.current = null;
+    };
+    const handleFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        isTabVisibleRef.current = true;
+        activeStartTimeRef.current = Date.now();
+      }
+    };
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        flushActiveTime();
+        isTabVisibleRef.current = false;
+        activeStartTimeRef.current = null;
+      } else {
+        isTabVisibleRef.current = true;
+        activeStartTimeRef.current = Date.now();
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      flushActiveTime();
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [flushActiveTime]);
+
+  // Periodic heartbeat flush and persist if answered
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!currentQuestion) return;
+      const totalTime = flushActiveTime();
+      const hasAnswer =
+        selectedOpt !== null && selectedOpt !== undefined && selectedOpt !== ''
+          ? true
+          : writingText !== '';
+      if (hasAnswer) {
+        onSaveAnswer(currentQuestion.id, selectedOpt || writingText, {
+          confidence,
+          markedForReview,
+          skipped: false,
+          choiceIndex: chosenChoiceIndex,
+          timeSpentSeconds: totalTime,
+        });
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [
+    currentQuestion,
+    selectedOpt,
+    writingText,
+    confidence,
+    markedForReview,
+    chosenChoiceIndex,
+    flushActiveTime,
+    onSaveAnswer,
+  ]);
 
   // Load existing answer for current question
   useEffect(() => {
@@ -125,6 +228,62 @@ export const ExamMode: React.FC<ExamModeProps> = ({
     }
   }, [isTimeExpired, canUseBuffer, bufferAvailableSeconds]);
 
+  // Switch questions with time saving
+  const switchQuestion = useCallback(
+    (newIdx: number) => {
+      if (newIdx === currentIndex || newIdx < 0 || newIdx >= questions.length) return;
+      const currentQ = questions[currentIndex];
+      if (currentQ) {
+        const totalTime = flushActiveTime(currentQ.id);
+        const resp = savedResponses[currentQ.id];
+        const hasAnswer =
+          (selectedOpt !== null && selectedOpt !== undefined && selectedOpt !== '') ||
+          writingText !== '' ||
+          (resp && resp.selected !== null && resp.selected !== undefined && resp.selected !== '');
+        const valToSave =
+          selectedOpt !== null && selectedOpt !== undefined
+            ? selectedOpt
+            : writingText !== ''
+            ? writingText
+            : resp?.selected ?? null;
+
+        onSaveAnswer(currentQ.id, valToSave, {
+          confidence: hasAnswer ? confidence : null,
+          markedForReview,
+          skipped: !hasAnswer,
+          choiceIndex: chosenChoiceIndex,
+          timeSpentSeconds: totalTime,
+        });
+      }
+      activeStartTimeRef.current = Date.now();
+      setCurrentIndex(newIdx);
+    },
+    [
+      currentIndex,
+      questions,
+      flushActiveTime,
+      savedResponses,
+      selectedOpt,
+      writingText,
+      confidence,
+      markedForReview,
+      chosenChoiceIndex,
+      onSaveAnswer,
+    ]
+  );
+
+  const handleNext = () => {
+    if (currentIndex < questions.length - 1) {
+      switchQuestion(currentIndex + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      switchQuestion(currentIndex - 1);
+    }
+  };
+
   // Keyboard shortcuts handler (1-5 for options, N for Next, P for Previous, M for Mark)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -157,31 +316,42 @@ export const ExamMode: React.FC<ExamModeProps> = ({
 
   const handleSelectOption = (letter: string) => {
     setSelectedOpt(letter);
+    const totalTime = flushActiveTime();
     onSaveAnswer(currentQuestion.id, letter, {
       confidence,
       markedForReview,
       skipped: false,
+      timeSpentSeconds: totalTime,
     });
   };
 
   const handleToggleConfidence = (tag: ConfidenceTag) => {
+    // Confidence must default to empty, never "Maybe". Skipped questions must have no confidence.
+    if (!selectedOpt && !writingText && !savedResponses[currentQuestion.id]?.selected) {
+      return;
+    }
     const newTag = confidence === tag ? null : tag;
     setConfidence(newTag);
+    const totalTime = flushActiveTime();
     onSaveAnswer(currentQuestion.id, selectedOpt, {
       confidence: newTag,
       markedForReview,
-      skipped: !selectedOpt,
+      skipped: false,
+      timeSpentSeconds: totalTime,
     });
   };
 
   const handleToggleReview = () => {
     const nextVal = !markedForReview;
     setMarkedForReview(nextVal);
+    const totalTime = flushActiveTime();
+    const hasAnswer = selectedOpt !== null || writingText !== '';
     onSaveAnswer(currentQuestion.id, selectedOpt || writingText || null, {
-      confidence,
+      confidence: hasAnswer ? confidence : null,
       markedForReview: nextVal,
-      skipped: !selectedOpt && !writingText,
+      skipped: !hasAnswer,
       choiceIndex: chosenChoiceIndex,
+      timeSpentSeconds: totalTime,
     });
   };
 
@@ -190,24 +360,14 @@ export const ExamMode: React.FC<ExamModeProps> = ({
     setConfidence(null);
     setWritingText('');
     setChosenChoiceIndex(undefined);
+    const totalTime = flushActiveTime();
     onSaveAnswer(currentQuestion.id, null, {
       confidence: null,
       markedForReview,
       skipped: true,
       choiceIndex: undefined,
+      timeSpentSeconds: totalTime,
     });
-  };
-
-  const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
   };
 
   // Writing text change handler
@@ -221,9 +381,12 @@ export const ExamMode: React.FC<ExamModeProps> = ({
 
     if (textDebounceRef.current) clearTimeout(textDebounceRef.current);
     textDebounceRef.current = setTimeout(() => {
+      const totalTime = flushActiveTime();
       onSaveAnswer(currentQuestion.id, text, {
         choiceIndex: chosenChoiceIndex,
         markedForReview,
+        skipped: !text,
+        timeSpentSeconds: totalTime,
         writingStats: {
           wordCount: words,
           pasteCount,
@@ -458,9 +621,11 @@ export const ExamMode: React.FC<ExamModeProps> = ({
                         type="button"
                         onClick={() => {
                           setChosenChoiceIndex(idx);
+                          const totalTime = flushActiveTime();
                           onSaveAnswer(currentQuestion.id, writingText, {
                             choiceIndex: idx,
                             markedForReview,
+                            timeSpentSeconds: totalTime,
                           });
                         }}
                         className={`w-full p-3.5 rounded-xl border text-left text-xs md:text-sm font-medium transition-all flex items-start space-x-3 ${
@@ -579,7 +744,7 @@ export const ExamMode: React.FC<ExamModeProps> = ({
                 return (
                   <button
                     key={q.id}
-                    onClick={() => setCurrentIndex(idx)}
+                    onClick={() => switchQuestion(idx)}
                     className={`h-9 rounded-lg font-bold text-xs border transition-all relative flex items-center justify-center ${btnStyle} ${
                       isCurrent ? 'ring-2 ring-blue-500 scale-105' : 'hover:opacity-80'
                     }`}
@@ -625,7 +790,7 @@ export const ExamMode: React.FC<ExamModeProps> = ({
                   <button
                     key={q.id}
                     onClick={() => {
-                      setCurrentIndex(idx);
+                      switchQuestion(idx);
                       setIsMobilePaletteOpen(false);
                     }}
                     className={`h-10 rounded-lg font-bold text-xs border ${btnStyle} ${

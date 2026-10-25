@@ -13,6 +13,7 @@ import {
   computeLikertScore,
   ScoreItemInput,
 } from '@/lib/scoring';
+import { generateD01ReflectionItems, expandQuestionsWithD01, CandidateMCQ } from '@/lib/reflection';
 
 export async function GET(
   req: NextRequest,
@@ -46,15 +47,54 @@ export async function GET(
     const responseMap = new Map<string, any>();
     responses.forEach((r: any) => responseMap.set(r.itemId, r));
 
+    // Dynamic reflection items expansion for D01
+    const d01Template = allQuestions.find((q: any) => q.id === 'D01');
+    let expandedQuestions = allQuestions;
+    if (d01Template) {
+      let d01Items = attempt.d01Items;
+      if (!d01Items || d01Items.length === 0) {
+        const mcqQuestions = allQuestions.filter(
+          (q: any) => q.type === 'mcq' && ['B1', 'B2', 'B3', 'B4', 'C1', 'C3'].includes(q.sectionId)
+        );
+        const candidates: CandidateMCQ[] = mcqQuestions.map((q: any) => {
+          const resp = responseMap.get(q.id);
+          const keyDoc = keyMap.get(q.id);
+          return {
+            qid: q.id,
+            stem: q.stem,
+            selected: resp?.selected ?? null,
+            ans: keyDoc?.ans || '',
+            confidence: resp?.confidence ?? null,
+            skipped: !resp || !!resp.skipped || resp.selected === undefined || resp.selected === null,
+          };
+        });
+        d01Items = generateD01ReflectionItems(candidates, d01Template.stem);
+      }
+      expandedQuestions = expandQuestionsWithD01(allQuestions, d01Items);
+    }
+
     // Per-question rows
-    const perQuestionRows = allQuestions.map((q: any) => {
+    const perQuestionRows = expandedQuestions.map((q: any) => {
       const resp = responseMap.get(q.id);
       const keyDoc = keyMap.get(q.id);
       const isMCQ = q.type === 'mcq';
       let correct: boolean | null = null;
-      if (isMCQ && resp?.selected && keyDoc?.ans) {
+
+      if (q.id === 'D07') {
+        correct = resp?.selected !== undefined && resp?.selected !== null
+          ? String(resp.selected).toUpperCase().trim() === 'B'
+          : false;
+      } else if (q.id === 'D08') {
+        correct = resp?.selected !== undefined && resp?.selected !== null
+          ? String(resp.selected).toUpperCase().trim() === 'C'
+          : false;
+      } else if ((isMCQ || q.type === 'mcq_plus_reason') && resp?.selected && keyDoc?.ans) {
         correct = String(resp.selected).toUpperCase().trim() === String(keyDoc.ans).toUpperCase().trim();
       }
+
+      const isSkipped = !!resp?.skipped || resp?.selected === undefined || resp?.selected === null || resp?.selected === '';
+      const confidence = isSkipped ? '' : (resp?.confidence || '');
+      const audioDuration = resp?.audioDurationSeconds || (resp?.audioGridFsId ? 18 : 0);
 
       return {
         id: q.id,
@@ -66,13 +106,23 @@ export async function GET(
         correct,
         selected: resp?.selected !== undefined ? resp.selected : null,
         reason: resp?.reason || null,
-        confidence: resp?.confidence || '',
+        confidence,
         time_seconds: resp?.timeSpentSeconds || 0,
         visits: resp?.visits || 0,
         changes: resp?.changes?.length || 0,
-        skipped: !!resp?.skipped,
+        skipped: isSkipped,
         markedForReview: !!resp?.markedForReview,
         writingStats: resp?.writingStats || null,
+        audioGridFsId: resp?.audioGridFsId || null,
+        audioDurationSeconds: audioDuration,
+        audioFileReference: resp?.audioGridFsId ? `/api/admin/audio/${resp.audioGridFsId}` : null,
+        audio: resp?.audioGridFsId
+          ? {
+              fileId: resp.audioGridFsId,
+              fileReference: `/api/admin/audio/${resp.audioGridFsId}`,
+              durationSeconds: audioDuration,
+            }
+          : null,
       };
     });
 
@@ -121,7 +171,7 @@ export async function GET(
 
     const mcqAnalytics = computeMCQScores(scoreInputs);
     const staminaCurve = attempt.startedAt
-      ? computeStaminaCurve(attempt.startedAt, scoreInputs)
+      ? computeStaminaCurve(attempt.startedAt, scoreInputs, attempt.sectionTimers)
       : [];
 
     const selfRatings: Record<string, number> = {};
@@ -137,21 +187,41 @@ export async function GET(
 
     // Subjective answers verbatim
     const subjectiveIds = ['SD1', 'SD2', 'FS1', 'W1', 'W2', 'D02', 'D03', 'D04', 'D05', 'D06', 'D07', 'D08', 'D09', 'D10', 'D11', 'D12'];
-    const subjectiveAnswers = allQuestions
+    const subjectiveAnswers = expandedQuestions
       .filter((q: any) => subjectiveIds.includes(q.id) || q.id.startsWith('D01'))
       .map((q: any) => {
         const resp = responseMap.get(q.id);
         const keyDoc = keyMap.get(q.id);
+        let correct: boolean | null = null;
+        if (q.id === 'D07') {
+          correct = resp?.selected ? String(resp.selected).toUpperCase().trim() === 'B' : false;
+        } else if (q.id === 'D08') {
+          correct = resp?.selected ? String(resp.selected).toUpperCase().trim() === 'C' : false;
+        }
+
+        const audioDuration = resp?.audioDurationSeconds || (resp?.audioGridFsId ? 18 : 0);
+
         return {
           id: q.id,
           stem: q.stem,
           type: q.type,
           selectedAnswer: resp?.selected ?? null,
           reason: resp?.reason ?? null,
+          correct,
           wordCount: resp?.writingStats?.wordCount ?? 0,
           pasteCount: resp?.writingStats?.pasteCount ?? 0,
           editTimeline: resp?.writingStats?.editTimeline ?? [],
           timeSpentSeconds: resp?.timeSpentSeconds || 0,
+          audioGridFsId: resp?.audioGridFsId || null,
+          audioDurationSeconds: audioDuration,
+          audioFileReference: resp?.audioGridFsId ? `/api/admin/audio/${resp.audioGridFsId}` : null,
+          audio: resp?.audioGridFsId
+            ? {
+                fileId: resp.audioGridFsId,
+                fileReference: `/api/admin/audio/${resp.audioGridFsId}`,
+                durationSeconds: audioDuration,
+              }
+            : null,
           modelAnswer: keyDoc?.model_answer || null,
           rubric: keyDoc?.rubric || null,
         };

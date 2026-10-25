@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Attempt } from '@/lib/models/Attempt';
+import { Question } from '@/lib/models/Question';
+import { AnswerKey } from '@/lib/models/AnswerKey';
+import { ResponseModel } from '@/lib/models/Response';
 import { SectionTimerActionSchema } from '@/lib/validations';
 import {
+  EXAM_SECTIONS,
   getSectionConfig,
   getNextSection,
   computeServerTimer,
 } from '@/lib/exam-flow';
+import { generateD01ReflectionItems, CandidateMCQ } from '@/lib/reflection';
 
 export async function POST(
   req: NextRequest,
@@ -34,6 +39,11 @@ export async function POST(
       return NextResponse.json({ error: 'Unknown section' }, { status: 400 });
     }
 
+    const secIndex = EXAM_SECTIONS.findIndex((s) => s.id === sectionId);
+    if (secIndex === -1) {
+      return NextResponse.json({ error: 'Unknown section' }, { status: 400 });
+    }
+
     let timer = attempt.sectionTimers.find((t) => t.sectionId === sectionId);
     if (!timer) {
       timer = {
@@ -49,6 +59,18 @@ export async function POST(
 
     // 1. ACTION: START
     if (action === 'start') {
+      // NEVER start a section before previous one is submitted
+      if (secIndex > 0) {
+        const prevSec = EXAM_SECTIONS[secIndex - 1];
+        const prevTimer = attempt.sectionTimers.find((t) => t.sectionId === prevSec.id);
+        if (!prevTimer || prevTimer.status !== 'submitted') {
+          return NextResponse.json(
+            { error: `Cannot start section ${sectionId} before previous section ${prevSec.id} is submitted` },
+            { status: 400 }
+          );
+        }
+      }
+
       if (!timer.startedAt) {
         timer.startedAt = now;
       }
@@ -58,9 +80,16 @@ export async function POST(
       attempt.currentSectionId = sectionId;
       attempt.currentPartId = secConfig.partId;
 
-      if (attempt.status === 'not_started') {
+      if (attempt.status === 'not_started' || !attempt.startedAt) {
         attempt.status = 'in_progress';
         attempt.startedAt = now;
+      }
+
+      // If starting Part A, ensure Part A timer has startedAt
+      if (sectionId === 'A') {
+        timer.startedAt = timer.startedAt || now;
+        timer.status = 'active';
+        attempt.startedAt = attempt.startedAt || now;
       }
     }
 
@@ -110,9 +139,42 @@ export async function POST(
             startedAt: now,
           };
           attempt.sectionTimers.push(nextTimer);
-        } else if (!nextTimer.startedAt) {
+        } else {
           nextTimer.startedAt = now;
           nextTimer.status = 'active';
+        }
+
+        // If advancing to Part D, generate D01 reflection items now if not already generated
+        if (nextSec.id === 'D' && (!attempt.d01Items || attempt.d01Items.length === 0)) {
+          const rawQuestions = await Question.find({}).lean();
+          const d01Template = rawQuestions.find((q) => q.id === 'D01');
+          if (d01Template) {
+            const mcqQuestions = rawQuestions.filter(
+              (q) => q.type === 'mcq' && ['B1', 'B2', 'B3', 'B4', 'C1', 'C3'].includes(q.sectionId)
+            );
+            const mcqIds = mcqQuestions.map((q) => q.id);
+            const answerKeys = await AnswerKey.find({ id: { $in: mcqIds } }).lean();
+            const ansMap = new Map<string, string>();
+            answerKeys.forEach((k) => ansMap.set(k.id, k.ans || ''));
+
+            const responses = await ResponseModel.find({ attemptId: attempt._id.toString() }).lean();
+            const responseMap = new Map<string, any>();
+            responses.forEach((r) => responseMap.set(r.itemId, r));
+
+            const candidates: CandidateMCQ[] = mcqQuestions.map((q) => {
+              const studentResp = responseMap.get(q.id);
+              return {
+                qid: q.id,
+                stem: q.stem,
+                selected: studentResp?.selected ?? null,
+                ans: ansMap.get(q.id) || '',
+                confidence: studentResp?.confidence ?? null,
+                skipped: !studentResp || !!studentResp.skipped || studentResp.selected === undefined || studentResp.selected === null,
+              };
+            });
+
+            attempt.d01Items = generateD01ReflectionItems(candidates, d01Template.stem);
+          }
         }
       } else {
         // Exam finished

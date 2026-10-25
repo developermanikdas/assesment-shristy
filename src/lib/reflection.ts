@@ -102,3 +102,39 @@ export function generateD01ReflectionItems(
     };
   });
 }
+
+/**
+ * Replace D01 template with concrete items D01a to D01f in a questions array
+ */
+export function expandQuestionsWithD01(
+  rawQuestions: any[],
+  d01Items: GeneratedReflectionItem[] | any[]
+): any[] {
+  const finalQuestions: any[] = [];
+  const d01Template = rawQuestions.find((q) => q.id === 'D01');
+  const d01Order = d01Template?.order || 100;
+
+  for (const q of rawQuestions) {
+    if (q.id === 'D01') {
+      d01Items.forEach((sub: any, subIdx: number) => {
+        finalQuestions.push({
+          id: sub.id,
+          partId: 'D',
+          sectionId: 'D',
+          type: 'short_text',
+          stem: sub.stem,
+          topic: 'explain-your-answer',
+          sourceQid: sub.sourceQid,
+          sourceAnswer: sub.sourceAnswer,
+          sourceConfidence: sub.sourceConfidence,
+          category: sub.category,
+          order: d01Order + subIdx * 0.1,
+        });
+      });
+    } else {
+      finalQuestions.push(q);
+    }
+  }
+  return finalQuestions;
+}
+

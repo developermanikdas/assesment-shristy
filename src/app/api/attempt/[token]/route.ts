@@ -10,7 +10,7 @@ import {
   getSectionConfig,
   computeServerTimer,
 } from '@/lib/exam-flow';
-import { generateD01ReflectionItems, CandidateMCQ } from '@/lib/reflection';
+import { generateD01ReflectionItems, expandQuestionsWithD01, CandidateMCQ } from '@/lib/reflection';
 
 export async function GET(
   req: NextRequest,
@@ -23,6 +23,22 @@ export async function GET(
     const attempt = await Attempt.findOne({ token }).lean();
     if (!attempt) {
       return NextResponse.json({ error: 'Assessment attempt not found' }, { status: 404 });
+    }
+
+    // Auto-initialize startedAt for Part A if no PIN is configured and attempt is not started
+    if (!attempt.pinHash && attempt.status === 'not_started') {
+      const now = new Date();
+      attempt.status = 'in_progress';
+      attempt.startedAt = now;
+      const timerA = attempt.sectionTimers?.find((s: any) => s.sectionId === 'A');
+      if (timerA && !timerA.startedAt) {
+        timerA.startedAt = now;
+        timerA.status = 'active';
+      }
+      await Attempt.updateOne(
+        { _id: attempt._id },
+        { $set: { status: 'in_progress', startedAt: now, sectionTimers: attempt.sectionTimers } }
+      );
     }
 
     const currentSectionConfig = getSectionConfig(attempt.currentSectionId) || EXAM_SECTIONS[0];
@@ -82,51 +98,40 @@ export async function GET(
     const d01Template = rawQuestions.find((q) => q.id === 'D01');
 
     if (d01Template) {
-      // Find candidate earlier MCQs for D01
-      const mcqQuestions = rawQuestions.filter(
-        (q) => q.type === 'mcq' && ['B1', 'B2', 'B3', 'B4', 'C1', 'C3'].includes(q.sectionId)
-      );
+      let reflectionItems = attempt.d01Items;
+      if (!reflectionItems || reflectionItems.length === 0) {
+        // Find candidate earlier MCQs for D01
+        const mcqQuestions = rawQuestions.filter(
+          (q) => q.type === 'mcq' && ['B1', 'B2', 'B3', 'B4', 'C1', 'C3'].includes(q.sectionId)
+        );
 
-      // Server queries answer keys strictly internally for selection algorithm
-      const mcqIds = mcqQuestions.map((q) => q.id);
-      const answerKeys = await AnswerKey.find({ id: { $in: mcqIds } }).lean();
-      const ansMap = new Map<string, string>();
-      answerKeys.forEach((k) => ansMap.set(k.id, k.ans || ''));
+        // Server queries answer keys strictly internally for selection algorithm
+        const mcqIds = mcqQuestions.map((q) => q.id);
+        const answerKeys = await AnswerKey.find({ id: { $in: mcqIds } }).lean();
+        const ansMap = new Map<string, string>();
+        answerKeys.forEach((k) => ansMap.set(k.id, k.ans || ''));
 
-      const candidates: CandidateMCQ[] = mcqQuestions.map((q) => {
-        const studentResp = responseMap[q.id];
-        return {
-          qid: q.id,
-          stem: q.stem,
-          selected: studentResp?.selected ?? null,
-          ans: ansMap.get(q.id) || '',
-          confidence: studentResp?.confidence ?? null,
-          skipped: !studentResp || !!studentResp.skipped || studentResp.selected === undefined || studentResp.selected === null,
-        };
-      });
+        const candidates: CandidateMCQ[] = mcqQuestions.map((q) => {
+          const studentResp = responseMap[q.id];
+          return {
+            qid: q.id,
+            stem: q.stem,
+            selected: studentResp?.selected ?? null,
+            ans: ansMap.get(q.id) || '',
+            confidence: studentResp?.confidence ?? null,
+            skipped: !studentResp || !!studentResp.skipped || studentResp.selected === undefined || studentResp.selected === null,
+          };
+        });
 
-      const reflectionItems = generateD01ReflectionItems(candidates, d01Template.stem);
+        reflectionItems = generateD01ReflectionItems(candidates, d01Template.stem);
 
-      // Replace D01 template with concrete items D01a to D01f
-      for (const q of rawQuestions) {
-        if (q.id === 'D01') {
-          reflectionItems.forEach((sub, subIdx) => {
-            finalQuestions.push({
-              id: sub.id,
-              partId: 'D',
-              sectionId: 'D',
-              type: 'short_text',
-              stem: sub.stem,
-              topic: 'explain-your-answer',
-              sourceQid: sub.sourceQid,
-              sourceAnswer: sub.sourceAnswer,
-              order: (q.order || 100) + subIdx * 0.1,
-            });
-          });
-        } else {
-          finalQuestions.push(q);
+        // If candidate is in Part D or later, persist reflection items
+        if (['D', 'E'].includes(attempt.currentPartId) || attempt.status === 'completed') {
+          await Attempt.updateOne({ _id: attempt._id }, { $set: { d01Items: reflectionItems } });
         }
       }
+
+      finalQuestions = expandQuestionsWithD01(rawQuestions, reflectionItems);
     } else {
       finalQuestions = rawQuestions;
     }

@@ -41,16 +41,16 @@ describe('1. Scoring & Negative Marking Engine', () => {
     expect(b1Score.attemptRate).toBe(80); // 4/5
   });
 
-  it('correctly assigns red, amber, green bands to topic breakdowns', () => {
+  it('correctly assigns red, amber, green bands and labels n < 3 as low data', () => {
     const sampleItems: ScoreItemInput[] = [
-      // Topic 1: Percentages (3/3 correct = 100% -> Green)
+      // Topic 1: Percentages (3/3 correct = 100% -> Green, n = 3)
       { id: 'Q01', sectionId: 'B1', type: 'mcq', topic: 'percentages', ans: 'A', selected: 'A', timeSpentSeconds: 30, skipped: false },
       { id: 'Q02', sectionId: 'B1', type: 'mcq', topic: 'percentages', ans: 'B', selected: 'B', timeSpentSeconds: 30, skipped: false },
       { id: 'Q03', sectionId: 'B1', type: 'mcq', topic: 'percentages', ans: 'C', selected: 'C', timeSpentSeconds: 30, skipped: false },
-      // Topic 2: Series (1/2 correct = 50% -> Amber)
+      // Topic 2: Series (1/2 correct = 50% -> Amber band, but n=2 < 3 -> "low data")
       { id: 'Q04', sectionId: 'B1', type: 'mcq', topic: 'series', ans: 'D', selected: 'D', timeSpentSeconds: 30, skipped: false },
       { id: 'Q05', sectionId: 'B1', type: 'mcq', topic: 'series', ans: 'A', selected: 'B', timeSpentSeconds: 30, skipped: false },
-      // Topic 3: Geometry (0/2 correct = 0% -> Red)
+      // Topic 3: Geometry (0/2 correct = 0% -> Red band, but n=2 < 3 -> "low data")
       { id: 'Q06', sectionId: 'B1', type: 'mcq', topic: 'geometry', ans: 'B', selected: 'C', timeSpentSeconds: 30, skipped: false },
       { id: 'Q07', sectionId: 'B1', type: 'mcq', topic: 'geometry', ans: 'A', selected: 'D', timeSpentSeconds: 30, skipped: false },
     ];
@@ -60,9 +60,55 @@ describe('1. Scoring & Negative Marking Engine', () => {
     const ser = result.topicBreakdown.find((t) => t.topic === 'series');
     const geo = result.topicBreakdown.find((t) => t.topic === 'geometry');
 
+    expect(pct?.n).toBe(3);
+    expect(pct?.isLowData).toBe(false);
     expect(pct?.band).toBe('green');
+    expect(pct?.label).toBe('green');
+
+    expect(ser?.n).toBe(2);
+    expect(ser?.isLowData).toBe(true);
     expect(ser?.band).toBe('amber');
+    expect(ser?.label).toBe('low data');
+
+    expect(geo?.n).toBe(2);
+    expect(geo?.isLowData).toBe(true);
     expect(geo?.band).toBe('red');
+    expect(geo?.label).toBe('low data');
+  });
+
+  it('computes stamina curve windows on exam time with breaks excluded', () => {
+    const examStart = new Date('2026-10-25T10:00:00Z');
+    // Break 1 took place from 10:50 to 11:00 (10 minutes = 600s)
+    const breakTimer = {
+      sectionId: 'BREAK1',
+      status: 'submitted',
+      durationSeconds: 600,
+      bufferUsedSeconds: 0,
+      startedAt: new Date('2026-10-25T10:50:00Z'),
+      submittedAt: new Date('2026-10-25T11:00:00Z'),
+    };
+
+    // Item answered at 11:05 (65 calendar minutes, but with 10 min break excluded = 55 exam minutes -> Window 30-60 min)
+    const items: ScoreItemInput[] = [
+      {
+        id: 'Q01',
+        sectionId: 'C1',
+        type: 'mcq',
+        ans: 'A',
+        selected: 'A',
+        skipped: false,
+        timeSpentSeconds: 40,
+        firstAnswerTs: new Date('2026-10-25T11:05:00Z'),
+      },
+    ];
+
+    const curve = computeStaminaCurve(examStart, items, [breakTimer as any]);
+    const win30_60 = curve.find((w) => w.label === '30–60 min');
+    const win60_90 = curve.find((w) => w.label === '60–90 min');
+
+    expect(win30_60?.questionsAnswered).toBe(1);
+    expect(win30_60?.accuracy).toBe(100);
+    expect(win60_90).toBeUndefined(); // only windows up to max window index are generated
   });
 
   it('populates confidence calibration matrix', () => {

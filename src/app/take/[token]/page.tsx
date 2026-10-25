@@ -266,10 +266,14 @@ export default function TakeAssessmentPage() {
         reason?: string;
         choiceIndex?: number;
         writingStats?: any;
+        timeSpentSeconds?: number;
       }
     ) => {
       const clientEventId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       setSaveStatus('saving');
+
+      const isSkipped = extra?.skipped !== undefined ? extra.skipped : (value === null || value === undefined || value === '');
+      const finalConfidence = isSkipped ? null : (extra?.confidence !== undefined ? extra.confidence : null);
 
       // Optimistic local update
       setSavedResponses((prev) => ({
@@ -278,13 +282,17 @@ export default function TakeAssessmentPage() {
           ...prev[itemId],
           itemId,
           selected: value,
-          confidence: extra?.confidence !== undefined ? extra.confidence : prev[itemId]?.confidence,
+          confidence: finalConfidence,
           markedForReview:
             extra?.markedForReview !== undefined ? extra.markedForReview : prev[itemId]?.markedForReview,
-          skipped: extra?.skipped !== undefined ? extra.skipped : false,
+          skipped: isSkipped,
           reason: extra?.reason !== undefined ? extra.reason : prev[itemId]?.reason,
           choiceIndex: extra?.choiceIndex !== undefined ? extra.choiceIndex : prev[itemId]?.choiceIndex,
           writingStats: extra?.writingStats || prev[itemId]?.writingStats,
+          timeSpentSeconds:
+            extra?.timeSpentSeconds !== undefined
+              ? Math.max(prev[itemId]?.timeSpentSeconds || 0, extra.timeSpentSeconds)
+              : prev[itemId]?.timeSpentSeconds,
           lastSavedAt: new Date().toISOString(),
         },
       }));
@@ -296,9 +304,10 @@ export default function TakeAssessmentPage() {
         selected: value,
         reason: extra?.reason,
         choiceIndex: extra?.choiceIndex,
-        confidence: extra?.confidence,
+        confidence: finalConfidence,
+        timeSpentSeconds: extra?.timeSpentSeconds,
         markedForReview: extra?.markedForReview,
-        skipped: extra?.skipped,
+        skipped: isSkipped,
         writingStats: extra?.writingStats,
         clientEventId,
       };

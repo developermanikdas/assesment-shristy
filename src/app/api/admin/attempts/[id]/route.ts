@@ -13,6 +13,7 @@ import {
   computeLikertScore,
   ScoreItemInput,
 } from '@/lib/scoring';
+import { generateD01ReflectionItems, expandQuestionsWithD01, CandidateMCQ } from '@/lib/reflection';
 
 export async function GET(
   req: NextRequest,
@@ -43,6 +44,32 @@ export async function GET(
     const responseMap = new Map<string, any>();
     responses.forEach((r: any) => responseMap.set(r.itemId, r));
 
+    // Dynamic reflection items expansion for D01
+    const d01Template = allQuestions.find((q: any) => q.id === 'D01');
+    let expandedQuestions = allQuestions;
+    if (d01Template) {
+      let d01Items = attempt.d01Items;
+      if (!d01Items || d01Items.length === 0) {
+        const mcqQuestions = allQuestions.filter(
+          (q: any) => q.type === 'mcq' && ['B1', 'B2', 'B3', 'B4', 'C1', 'C3'].includes(q.sectionId)
+        );
+        const candidates: CandidateMCQ[] = mcqQuestions.map((q: any) => {
+          const resp = responseMap.get(q.id);
+          const keyDoc = keyMap.get(q.id);
+          return {
+            qid: q.id,
+            stem: q.stem,
+            selected: resp?.selected ?? null,
+            ans: keyDoc?.ans || '',
+            confidence: resp?.confidence ?? null,
+            skipped: !resp || !!resp.skipped || resp.selected === undefined || resp.selected === null,
+          };
+        });
+        d01Items = generateD01ReflectionItems(candidates, d01Template.stem);
+      }
+      expandedQuestions = expandQuestionsWithD01(allQuestions, d01Items);
+    }
+
     // Prepare ScoreItemInputs for MCQ scoring
     const scoreInputs: ScoreItemInput[] = allQuestions.map((q: any) => {
       const resp = responseMap.get(q.id);
@@ -66,9 +93,9 @@ export async function GET(
 
     const mcqAnalytics = computeMCQScores(scoreInputs);
 
-    // Stamina curve
+    // Stamina curve with breaks excluded
     const staminaCurve = attempt.startedAt
-      ? computeStaminaCurve(attempt.startedAt, scoreInputs)
+      ? computeStaminaCurve(attempt.startedAt, scoreInputs, attempt.sectionTimers)
       : [];
 
     // Self-ratings (Part A items A07 to A13)
@@ -124,13 +151,26 @@ export async function GET(
         profileSections[sec].push(itemData);
       });
 
-    // Subjective items (SD1, SD2, FS1, W1, W2, D02-D12)
+    // Subjective items (SD1, SD2, FS1, W1, W2, D01a-D01f, D02-D12)
     const subjectiveIds = ['SD1', 'SD2', 'FS1', 'W1', 'W2', 'D02', 'D03', 'D04', 'D05', 'D06', 'D07', 'D08', 'D09', 'D10', 'D11', 'D12'];
-    const subjectiveAnswers = allQuestions
+    const subjectiveAnswers = expandedQuestions
       .filter((q: any) => subjectiveIds.includes(q.id) || q.id.startsWith('D01'))
       .map((q: any) => {
         const resp = responseMap.get(q.id);
         const keyDoc = keyMap.get(q.id);
+        let correct: boolean | null = null;
+        if (q.id === 'D07') {
+          correct = resp?.selected !== undefined && resp?.selected !== null
+            ? String(resp.selected).toUpperCase().trim() === 'B'
+            : false;
+        } else if (q.id === 'D08') {
+          correct = resp?.selected !== undefined && resp?.selected !== null
+            ? String(resp.selected).toUpperCase().trim() === 'C'
+            : false;
+        }
+
+        const audioDuration = resp?.audioDurationSeconds || (resp?.audioGridFsId ? 18 : null);
+
         return {
           id: q.id,
           stem: q.stem,
@@ -139,11 +179,13 @@ export async function GET(
           marks: q.marks,
           selected: resp?.selected ?? null,
           reason: resp?.reason ?? null,
+          correct,
           choiceIndex: resp?.choiceIndex ?? null,
           choices: q.choices,
           timeSpentSeconds: resp?.timeSpentSeconds || 0,
           writingStats: resp?.writingStats || null,
           audioGridFsId: resp?.audioGridFsId || null,
+          audioDurationSeconds: audioDuration,
           modelAnswer: keyDoc?.model_answer || null,
           rubric: keyDoc?.rubric || null,
           skipped: !!resp?.skipped,
@@ -151,14 +193,27 @@ export async function GET(
       });
 
     // Per-question comprehensive rows
-    const perQuestionRows = allQuestions.map((q: any) => {
+    const perQuestionRows = expandedQuestions.map((q: any) => {
       const resp = responseMap.get(q.id);
       const keyDoc = keyMap.get(q.id);
       const isMCQ = q.type === 'mcq';
       let correct: boolean | null = null;
-      if (isMCQ && resp?.selected && keyDoc?.ans) {
+
+      if (q.id === 'D07') {
+        correct = resp?.selected !== undefined && resp?.selected !== null
+          ? String(resp.selected).toUpperCase().trim() === 'B'
+          : false;
+      } else if (q.id === 'D08') {
+        correct = resp?.selected !== undefined && resp?.selected !== null
+          ? String(resp.selected).toUpperCase().trim() === 'C'
+          : false;
+      } else if ((isMCQ || q.type === 'mcq_plus_reason') && resp?.selected && keyDoc?.ans) {
         correct = String(resp.selected).toUpperCase().trim() === String(keyDoc.ans).toUpperCase().trim();
       }
+
+      const isSkipped = !!resp?.skipped || resp?.selected === undefined || resp?.selected === null || resp?.selected === '';
+      const confidence = isSkipped ? null : (resp?.confidence ?? null);
+      const audioDuration = resp?.audioDurationSeconds || (resp?.audioGridFsId ? 18 : null);
 
       return {
         id: q.id,
@@ -169,17 +224,18 @@ export async function GET(
         type: q.type,
         stem: q.stem,
         selected: resp?.selected ?? null,
-        confidence: resp?.confidence ?? null,
+        confidence,
         correct,
         ans: keyDoc?.ans ?? null,
         timeSpentSeconds: resp?.timeSpentSeconds || 0,
         visits: resp?.visits || 0,
         changesCount: resp?.changes?.length || 0,
         changes: resp?.changes || [],
-        skipped: !!resp?.skipped,
+        skipped: isSkipped,
         markedForReview: !!resp?.markedForReview,
         writingStats: resp?.writingStats || null,
         audioGridFsId: resp?.audioGridFsId || null,
+        audioDurationSeconds: audioDuration,
       };
     });
 

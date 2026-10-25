@@ -116,6 +116,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
       const formData = new FormData();
       formData.append('audio', audioBlob, `voice-note-${itemId}.webm`);
       formData.append('itemId', itemId);
+      formData.append('duration', recordingSeconds.toString());
 
       const res = await fetch(`/api/attempt/${token}/audio`, {
         method: 'POST',

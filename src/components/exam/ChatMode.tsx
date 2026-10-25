@@ -12,7 +12,7 @@ import {
   SkipForward,
   Sparkles,
 } from 'lucide-react';
-import { QuestionItem } from '@/types';
+import { QuestionItem, ConfidenceTag } from '@/types';
 import { translations, Language } from '@/lib/i18n';
 import { AudioRecorder } from './AudioRecorder';
 
@@ -26,7 +26,13 @@ interface ChatModeProps {
   onSaveAnswer: (
     itemId: string,
     value: any,
-    extra?: { reason?: string; choiceIndex?: number; skipped?: boolean }
+    extra?: {
+      reason?: string;
+      choiceIndex?: number;
+      skipped?: boolean;
+      timeSpentSeconds?: number;
+      confidence?: ConfidenceTag | null;
+    }
   ) => void;
   onPartComplete: () => void;
 }
@@ -52,6 +58,77 @@ export const ChatMode: React.FC<ChatModeProps> = ({
   const [currentReason, setCurrentReason] = useState<string>('');
   const [currentChoiceIndex, setCurrentChoiceIndex] = useState<number | undefined>(undefined);
   const [wordCount, setWordCount] = useState<number>(0);
+
+  // Time tracking: visible time per question, pausing on tab blur/window blur/hidden
+  const timeSpentMapRef = React.useRef<Record<string, number>>({});
+  const activeStartTimeRef = React.useRef<number | null>(Date.now());
+  const isTabVisibleRef = React.useRef<boolean>(true);
+
+  // Sync saved timeSpentSeconds from savedResponses
+  useEffect(() => {
+    Object.entries(savedResponses).forEach(([id, r]) => {
+      if (
+        r?.timeSpentSeconds &&
+        (timeSpentMapRef.current[id] === undefined || timeSpentMapRef.current[id] < r.timeSpentSeconds)
+      ) {
+        timeSpentMapRef.current[id] = r.timeSpentSeconds;
+      }
+    });
+  }, [savedResponses]);
+
+  // Flush active time for a question
+  const flushActiveTime = React.useCallback(
+    (targetQuestionId?: string) => {
+      const q = targetQuestionId || currentQuestion?.id;
+      if (!q) return 0;
+      if (isTabVisibleRef.current && activeStartTimeRef.current !== null) {
+        const now = Date.now();
+        const elapsedSec = Math.max(0, Math.floor((now - activeStartTimeRef.current) / 1000));
+        if (elapsedSec > 0) {
+          timeSpentMapRef.current[q] = (timeSpentMapRef.current[q] || 0) + elapsedSec;
+          activeStartTimeRef.current = now;
+        }
+      }
+      return timeSpentMapRef.current[q] || 0;
+    },
+    [currentQuestion?.id]
+  );
+
+  // Listen to tab blur, window blur, and visibility change
+  useEffect(() => {
+    const handleBlur = () => {
+      flushActiveTime();
+      isTabVisibleRef.current = false;
+      activeStartTimeRef.current = null;
+    };
+    const handleFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        isTabVisibleRef.current = true;
+        activeStartTimeRef.current = Date.now();
+      }
+    };
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        flushActiveTime();
+        isTabVisibleRef.current = false;
+        activeStartTimeRef.current = null;
+      } else {
+        isTabVisibleRef.current = true;
+        activeStartTimeRef.current = Date.now();
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      flushActiveTime();
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [flushActiveTime]);
 
   // Sync state when question changes
   useEffect(() => {
@@ -88,14 +165,17 @@ export const ChatMode: React.FC<ChatModeProps> = ({
     language === 'hi' && currentQuestion.opts_hi ? currentQuestion.opts_hi : currentQuestion.opts || [];
 
   const handleNext = () => {
-    // Save answer
+    // Save answer with accumulated visible time
+    const totalTime = flushActiveTime();
     onSaveAnswer(currentQuestion.id, currentVal, {
       reason: currentReason || undefined,
       choiceIndex: currentChoiceIndex,
       skipped: false,
+      timeSpentSeconds: totalTime,
     });
 
     if (currentIndex < questions.length - 1) {
+      activeStartTimeRef.current = Date.now();
       setCurrentIndex(currentIndex + 1);
     } else {
       onPartComplete();
@@ -103,14 +183,22 @@ export const ChatMode: React.FC<ChatModeProps> = ({
   };
 
   const handleBack = () => {
+    flushActiveTime();
     if (currentIndex > 0) {
+      activeStartTimeRef.current = Date.now();
       setCurrentIndex(currentIndex - 1);
     }
   };
 
   const handleSkip = () => {
-    onSaveAnswer(currentQuestion.id, null, { skipped: true });
+    const totalTime = flushActiveTime();
+    onSaveAnswer(currentQuestion.id, null, {
+      skipped: true,
+      timeSpentSeconds: totalTime,
+      confidence: null,
+    });
     if (currentIndex < questions.length - 1) {
+      activeStartTimeRef.current = Date.now();
       setCurrentIndex(currentIndex + 1);
     } else {
       onPartComplete();
@@ -382,7 +470,17 @@ export const ChatMode: React.FC<ChatModeProps> = ({
                 hasExistingAudio={!!savedResponses[currentQuestion.id]?.hasAudio}
                 onUploaded={(audioId) => {
                   setCurrentVal('[Audio Uploaded]');
-                  handleNext();
+                  const totalTime = flushActiveTime();
+                  onSaveAnswer(currentQuestion.id, '[Audio Uploaded]', {
+                    skipped: false,
+                    timeSpentSeconds: totalTime,
+                  });
+                  if (currentIndex < questions.length - 1) {
+                    activeStartTimeRef.current = Date.now();
+                    setCurrentIndex(currentIndex + 1);
+                  } else {
+                    onPartComplete();
+                  }
                 }}
                 onSkip={handleSkip}
               />

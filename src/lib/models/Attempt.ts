@@ -24,6 +24,7 @@ export interface IAttempt {
   notepad: string;
   language: 'en' | 'hi';
   deviceInfo?: Record<string, any>;
+  d01Items?: any[];
   integritySummary?: {
     tabBlurCount: number;
     fullscreenExitCount: number;
@@ -68,6 +69,7 @@ const AttemptSchema = new Schema<IAttempt>(
     notepad: { type: String, default: '' },
     language: { type: String, enum: ['en', 'hi'], default: 'en' },
     deviceInfo: { type: Schema.Types.Mixed },
+    d01Items: { type: [Schema.Types.Mixed] },
     integritySummary: {
       tabBlurCount: { type: Number, default: 0 },
       fullscreenExitCount: { type: Number, default: 0 },

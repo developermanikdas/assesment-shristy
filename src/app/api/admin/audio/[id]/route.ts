@@ -42,10 +42,38 @@ export async function GET(
       chunks.push(Buffer.from(chunk));
     }
     const buffer = Buffer.concat(chunks);
+    const totalLength = buffer.length;
+    const contentType = file.metadata?.contentType || 'audio/webm';
+    const rangeHeader = req.headers.get('range');
+
+    if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+      const parts = rangeHeader.replace('bytes=', '').split('-');
+      const start = parseInt(parts[0], 10) || 0;
+      const end = parts[1] ? parseInt(parts[1], 10) : totalLength - 1;
+
+      if (start >= totalLength || end >= totalLength) {
+        return new Response(null, {
+          status: 416,
+          headers: { 'Content-Range': `bytes */${totalLength}` },
+        });
+      }
+
+      const chunk = buffer.subarray(start, end + 1);
+      return new Response(chunk, {
+        status: 206,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Range': `bytes ${start}-${end}/${totalLength}`,
+          'Content-Length': chunk.length.toString(),
+          'Accept-Ranges': 'bytes',
+        },
+      });
+    }
 
     return new Response(buffer, {
+      status: 200,
       headers: {
-        'Content-Type': file.metadata?.contentType || 'audio/webm',
+        'Content-Type': contentType,
         'Content-Length': buffer.length.toString(),
         'Accept-Ranges': 'bytes',
       },

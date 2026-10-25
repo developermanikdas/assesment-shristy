@@ -35,6 +35,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, error: 'Incorrect 6-digit PIN' }, { status: 401 });
     }
 
+    // Set startedAt for Part A when unlocked and starting
+    if (attempt.status === 'not_started') {
+      const now = new Date();
+      attempt.status = 'in_progress';
+      attempt.startedAt = now;
+      const timerA = attempt.sectionTimers?.find((s) => s.sectionId === 'A');
+      if (timerA && !timerA.startedAt) {
+        timerA.startedAt = now;
+        timerA.status = 'active';
+      }
+      await attempt.save();
+    }
+
     return NextResponse.json({ valid: true });
   } catch (err: any) {
     console.error('Verify PIN error:', err);

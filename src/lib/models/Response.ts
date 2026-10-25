@@ -21,6 +21,7 @@ export interface IResponse {
     editTimeline: Array<{ ts: Date; length: number }>;
   };
   audioGridFsId?: string;
+  audioDurationSeconds?: number;
   lastSavedAt: Date;
   clientEventId?: string;
 }
@@ -58,6 +59,7 @@ const ResponseSchema = new Schema<IResponse>(
       ],
     },
     audioGridFsId: { type: String },
+    audioDurationSeconds: { type: Number },
     lastSavedAt: { type: Date, default: Date.now },
     clientEventId: { type: String },
   },

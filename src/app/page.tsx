@@ -57,6 +57,7 @@ export default function HomePage() {
               <span className="text-xs text-slate-500 dark:text-slate-400 block -mt-1">
                 Aspirant Assessment & 1-Year Study Roadmap Platform
               </span>
+            </div>
           </div>
         </div>
       </header>

@@ -621,9 +621,9 @@ export default function AttemptDetailPage() {
                       onChange={(e) => setSelectedSectionToExtend(e.target.value)}
                       className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
                     >
-                      {['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'].map((s) => (
+                      {['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4', 'BUFFER'].map((s) => (
                         <option key={s} value={s}>
-                          {s}
+                          {s === 'BUFFER' ? 'Pooled Buffer Bank' : `Section ${s}`}
                         </option>
                       ))}
                     </select>

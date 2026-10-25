@@ -59,6 +59,7 @@ export async function GET(
           return {
             qid: q.id,
             stem: q.stem,
+            opts: q.opts,
             selected: resp?.selected ?? null,
             ans: keyDoc?.ans || '',
             confidence: resp?.confidence ?? null,

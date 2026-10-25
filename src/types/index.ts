@@ -57,6 +57,12 @@ export interface QuestionItem {
   reverse_scored?: boolean;
   required?: boolean;
   set?: string;
+  sourceQid?: string;
+  sourceStem?: string;
+  sourceOptions?: string[];
+  sourceAnswer?: string;
+  sourceConfidence?: string;
+  category?: string;
   // Note: ans, model_answer, rubric are NOT present in client-facing QuestionItem
 }
 

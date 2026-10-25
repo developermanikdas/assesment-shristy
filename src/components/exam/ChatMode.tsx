@@ -18,6 +18,7 @@ import { AudioRecorder } from './AudioRecorder';
 
 interface ChatModeProps {
   questions: QuestionItem[];
+  allQuestions?: QuestionItem[];
   partTitle: string;
   partId: string;
   language: Language;
@@ -39,6 +40,7 @@ interface ChatModeProps {
 
 export const ChatMode: React.FC<ChatModeProps> = ({
   questions,
+  allQuestions,
   partTitle,
   partId,
   language,
@@ -247,6 +249,74 @@ export const ChatMode: React.FC<ChatModeProps> = ({
             <p className="text-base md:text-lg font-medium text-slate-900 dark:text-white leading-relaxed whitespace-pre-line">
               {stemText}
             </p>
+
+            {/* If reflection question, show the original referenced question so candidate knows what they are answering about */}
+            {(() => {
+              const sourceQid = currentQuestion?.sourceQid;
+              const sourceQuestion = sourceQid ? allQuestions?.find((q) => q.id === sourceQid) : undefined;
+              const refStem = currentQuestion?.sourceStem || sourceQuestion?.stem;
+              const refOptions = currentQuestion?.sourceOptions || sourceQuestion?.opts;
+              const refAnswer = currentQuestion?.sourceAnswer;
+              const refConfidence = currentQuestion?.sourceConfidence;
+
+              if (!refStem && !sourceQid) return null;
+
+              return (
+                <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-sm space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span className="flex items-center space-x-1.5">
+                      <span>Referenced Question {sourceQid}</span>
+                    </span>
+                    {refConfidence && refConfidence !== 'None' && (
+                      <span className="text-[11px] font-normal normal-case px-2.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        Your confidence: <strong>{refConfidence}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {refStem && (
+                    <p className="font-medium text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-snug">
+                      {refStem}
+                    </p>
+                  )}
+
+                  {refOptions && refOptions.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      {refOptions.map((opt: string, i: number) => {
+                        const letter = String.fromCharCode(65 + i);
+                        const isSelected = String(refAnswer || '').toUpperCase().trim() === letter;
+                        return (
+                          <div
+                            key={i}
+                            className={`flex items-start space-x-2.5 text-xs sm:text-sm p-2 rounded-lg transition-colors ${
+                              isSelected
+                                ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 text-blue-950 dark:text-blue-100 font-medium'
+                                : 'text-slate-700 dark:text-slate-300 bg-white/70 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800'
+                            }`}
+                          >
+                            <span
+                              className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-[11px] flex-shrink-0 ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white shadow-sm'
+                                  : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              {letter}
+                            </span>
+                            <span className="flex-1 mt-0.5 leading-snug">{opt}</span>
+                            {isSelected && (
+                              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider self-center px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Model answer or error prompt if spot-the-error */}
             {currentQuestion.topic === 'spot-the-error' && (

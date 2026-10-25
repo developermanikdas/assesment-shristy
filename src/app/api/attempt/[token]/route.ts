@@ -116,6 +116,7 @@ export async function GET(
           return {
             qid: q.id,
             stem: q.stem,
+            opts: q.opts,
             selected: studentResp?.selected ?? null,
             ans: ansMap.get(q.id) || '',
             confidence: studentResp?.confidence ?? null,

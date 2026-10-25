@@ -1,6 +1,7 @@
 export interface CandidateMCQ {
   qid: string;
   stem: string;
+  opts?: string[];
   selected?: string | null;
   ans: string;
   confidence?: 'Sure' | 'Maybe' | 'Guess' | null;
@@ -11,6 +12,8 @@ export interface GeneratedReflectionItem {
   id: string; // D01a to D01f
   type: 'short_text';
   sourceQid: string;
+  sourceStem?: string;
+  sourceOptions?: string[];
   stem: string;
   sourceAnswer: string;
   sourceConfidence: string;
@@ -95,6 +98,8 @@ export function generateD01ReflectionItems(
       id: `D01${subIds[idx]}`,
       type: 'short_text',
       sourceQid: q.qid,
+      sourceStem: q.stem,
+      sourceOptions: q.opts,
       stem: itemStem,
       sourceAnswer: answerStr,
       sourceConfidence: confStr,
@@ -117,6 +122,7 @@ export function expandQuestionsWithD01(
   for (const q of rawQuestions) {
     if (q.id === 'D01') {
       d01Items.forEach((sub: any, subIdx: number) => {
+        const sourceQ = rawQuestions.find((orig) => orig.id === sub.sourceQid);
         finalQuestions.push({
           id: sub.id,
           partId: 'D',
@@ -125,6 +131,8 @@ export function expandQuestionsWithD01(
           stem: sub.stem,
           topic: 'explain-your-answer',
           sourceQid: sub.sourceQid,
+          sourceStem: sub.sourceStem || sourceQ?.stem,
+          sourceOptions: sub.sourceOptions || sourceQ?.opts,
           sourceAnswer: sub.sourceAnswer,
           sourceConfidence: sub.sourceConfidence,
           category: sub.category,

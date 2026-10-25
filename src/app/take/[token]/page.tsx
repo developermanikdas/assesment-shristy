@@ -536,6 +536,7 @@ export default function TakeAssessmentPage() {
           /* 2. CHAT MODE (Parts A, D, E) */
           <ChatMode
             questions={sectionQuestions}
+            allQuestions={questions}
             partTitle={currentSectionConfig?.title || 'Diagnostic'}
             partId={currentPartId}
             language={language}

@@ -5,6 +5,7 @@ export interface ISectionTimer {
   startedAt?: Date;
   durationSeconds: number;
   bufferUsedSeconds: number;
+  bufferStartedAt?: Date;
   submittedAt?: Date;
   status: 'not_started' | 'active' | 'buffer_active' | 'submitted' | 'locked';
 }
@@ -38,6 +39,7 @@ const SectionTimerSchema = new Schema<ISectionTimer>(
     startedAt: { type: Date },
     durationSeconds: { type: Number, required: true },
     bufferUsedSeconds: { type: Number, default: 0 },
+    bufferStartedAt: { type: Date },
     submittedAt: { type: Date },
     status: {
       type: String,

@@ -36,12 +36,17 @@ export async function POST(req: NextRequest) {
     const { email, password } = parsed.data;
 
     // Check env credentials first
-    const envEmail = process.env.ADMIN_EMAIL || 'mentor@rbi-prep.local';
-    const envPassword = process.env.ADMIN_PASSWORD || 'MentorRBI2026!';
+    const envEmail = process.env.ADMIN_EMAIL;
+    const envPassword = process.env.ADMIN_PASSWORD;
 
     let isValid = false;
 
-    if (email.toLowerCase() === envEmail.toLowerCase() && password === envPassword) {
+    if (
+      envEmail &&
+      envPassword &&
+      email.toLowerCase() === envEmail.toLowerCase() &&
+      password === envPassword
+    ) {
       isValid = true;
     } else {
       // Check database admin

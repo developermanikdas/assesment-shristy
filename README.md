@@ -97,9 +97,9 @@ cp .env.example .env.local
 Ensure `.env.local` contains:
 ```env
 MONGODB_URI=mongodb://127.0.0.1:27017/rbi_baseline
-ADMIN_EMAIL=mentor@rbi-prep.local
-ADMIN_PASSWORD=MentorRBI2026!
-SESSION_SECRET=rbi-baseline-super-secret-mentor-key-2026-safe-secure-32chars
+ADMIN_EMAIL=your_email@example.com
+ADMIN_PASSWORD=your_secure_password
+SESSION_SECRET=your_32_character_random_secret_key
 APP_URL=http://localhost:3000
 ```
 
@@ -119,7 +119,7 @@ npm run seed
 - Total 252 questions upserted.
 - 5 shared sets upserted (`DI1`, `SEAT`, `PUZ`, `RC1`, `CLOZE`).
 - 162 answer keys safely segregated into `answer_keys`.
-- Mentor admin created (`mentor@rbi-prep.local`).
+- Mentor admin created (using your configured ADMIN_EMAIL).
 
 ### Step 4: Run Test Suites
 Verify scoring algorithms, negative marking, reverse Likert math, dynamic reflection selection, and secrecy:
@@ -167,8 +167,8 @@ MONGODB_URI="mongodb+srv://rbi_app_user:<password>@cluster0.abcde.mongodb.net/rb
 1. Install the Vercel CLI or link your Git repository via [vercel.com](https://vercel.com).
 2. Configure the following **Environment Variables** in the Vercel Project Settings:
    - `MONGODB_URI`: Your MongoDB Atlas connection string.
-   - `ADMIN_EMAIL`: `mentor@rbi-prep.local` (or your preferred mentor email).
-   - `ADMIN_PASSWORD`: Your mentor password.
+   - `ADMIN_EMAIL`: Your mentor login email.
+   - `ADMIN_PASSWORD`: Your mentor login password.
    - `SESSION_SECRET`: A secure 32+ character random string.
    - `APP_URL`: Your Vercel production domain (e.g., `https://rbi-baseline-assessment.vercel.app`).
 3. Deploy:
@@ -185,8 +185,8 @@ Use this quick walkthrough to test and demonstrate all major features in 10 minu
 ### 1. Admin Login & Candidate Creation (2 minutes)
 1. Navigate to `http://localhost:3000/admin/login`.
 2. Sign in with:
-   - **Email:** `mentor@rbi-prep.local`
-   - **Password:** `MentorRBI2026!`
+   - **Email:** Your configured `ADMIN_EMAIL`
+   - **Password:** Your configured `ADMIN_PASSWORD`
 3. Click **"New Candidate Attempt"** in the top-right corner.
 4. Enter:
    - **Student Nickname:** `Ananya Verma`

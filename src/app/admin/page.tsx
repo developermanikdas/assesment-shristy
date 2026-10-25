@@ -373,7 +373,7 @@ export default function AdminDashboardPage() {
                     maxLength={6}
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    placeholder="e.g. 123456 (leave empty for no PIN)"
+                    placeholder="6-digit PIN (optional)"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <span className="text-[10px] text-slate-500 mt-1 block">

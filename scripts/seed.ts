@@ -177,21 +177,23 @@ async function seed() {
   console.log(`✓ Answer keys isolated in 'answer_keys': ${totalAnswerKeysCount}`);
 
   // Create default mentor admin if configured or not existing
-  const adminEmail = process.env.ADMIN_EMAIL || 'mentor@rbi-prep.local';
-  const defaultPassword = process.env.ADMIN_PASSWORD || 'MentorRBI2026!';
-  const existingAdmin = await adminsColl.findOne({ email: adminEmail });
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const defaultPassword = process.env.ADMIN_PASSWORD;
 
-  if (!existingAdmin) {
-    const passwordHash = process.env.ADMIN_PASSWORD_HASH || (await bcrypt.hash(defaultPassword, 10));
-    await adminsColl.insertOne({
-      email: adminEmail,
-      passwordHash,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    console.log(`✓ Default admin created: ${adminEmail} (password: ${defaultPassword})`);
-  } else {
-    console.log(`✓ Admin already exists: ${adminEmail}`);
+  if (adminEmail && (defaultPassword || process.env.ADMIN_PASSWORD_HASH)) {
+    const existingAdmin = await adminsColl.findOne({ email: adminEmail });
+    if (!existingAdmin) {
+      const passwordHash = process.env.ADMIN_PASSWORD_HASH || (await bcrypt.hash(defaultPassword!, 10));
+      await adminsColl.insertOne({
+        email: adminEmail,
+        passwordHash,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log(`✓ Admin created for: ${adminEmail}`);
+    } else {
+      console.log(`✓ Admin already exists: ${adminEmail}`);
+    }
   }
 
   // Create indexes

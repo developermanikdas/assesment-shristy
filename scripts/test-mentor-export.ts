@@ -6,8 +6,8 @@ async function testMentor() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: 'mentor@rbi-prep.local',
-      password: 'MentorRBI2026!',
+      email: process.env.ADMIN_EMAIL || '',
+      password: process.env.ADMIN_PASSWORD || '',
     }),
   });
 

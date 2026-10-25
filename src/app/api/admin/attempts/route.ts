@@ -104,7 +104,13 @@ export async function POST(req: NextRequest) {
       language: 'en',
     });
 
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    // Derive URL dynamically from request headers or environment variable
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const proto = req.headers.get('x-forwarded-proto') || (host && !host.includes('localhost') ? 'https' : 'http');
+    const dynamicOrigin = host ? `${proto}://${host}` : null;
+    const appUrl = (process.env.APP_URL && !process.env.APP_URL.includes('localhost'))
+      ? process.env.APP_URL
+      : (dynamicOrigin || process.env.APP_URL || 'http://localhost:3000');
     const privateLink = `${appUrl}/take/${token}`;
 
     return NextResponse.json({

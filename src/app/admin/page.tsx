@@ -410,20 +410,28 @@ export default function AdminDashboardPage() {
                   <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                     Candidate Private Link:
                   </label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={createdResult.privateLink}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-800 text-slate-200 font-mono select-all"
-                    />
-                    <button
-                      onClick={() => handleCopyLink(createdResult.privateLink)}
-                      className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  {(() => {
+                    const displayLink =
+                      typeof window !== 'undefined' && createdResult.token
+                        ? `${window.location.origin}/take/${createdResult.token}`
+                        : createdResult.privateLink;
+                    return (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={displayLink}
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-800 text-slate-200 font-mono select-all"
+                        />
+                        <button
+                          onClick={() => handleCopyLink(displayLink)}
+                          className="p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+                        >
+                          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {createdResult.pin && (

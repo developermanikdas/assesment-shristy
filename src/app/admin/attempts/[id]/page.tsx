@@ -21,6 +21,7 @@ import {
   User,
   Sparkles,
   Award,
+  Copy,
 } from 'lucide-react';
 
 export default function AttemptDetailPage() {
@@ -188,9 +189,25 @@ export default function AttemptDetailPage() {
                   {attempt.status.replace('_', ' ')}
                 </span>
               </div>
-              <span className="text-xs text-slate-400 block font-mono">
-                Token: {attempt.token}
-              </span>
+              <div className="flex items-center space-x-2 mt-0.5">
+                <span className="text-xs text-slate-400 font-mono">
+                  Token: {attempt.token}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = `${window.location.origin}/take/${attempt.token}`;
+                    navigator.clipboard.writeText(link);
+                    setActionSuccessMsg('Copied candidate link to clipboard!');
+                    setTimeout(() => setActionSuccessMsg(''), 3000);
+                  }}
+                  className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-blue-400 font-sans font-semibold flex items-center space-x-1 transition-colors"
+                  title="Copy candidate assessment URL"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>Copy Link</span>
+                </button>
+              </div>
             </div>
           </div>
 

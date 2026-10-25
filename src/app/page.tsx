@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Compass,
@@ -15,7 +14,6 @@ import {
   Brain,
   UserCheck,
   ChevronRight,
-  KeyRound,
   ExternalLink,
 } from 'lucide-react';
 
@@ -59,16 +57,6 @@ export default function HomePage() {
               <span className="text-xs text-slate-500 dark:text-slate-400 block -mt-1">
                 Aspirant Assessment & 1-Year Study Roadmap Platform
               </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/admin/login"
-              className="px-3.5 py-1.5 text-xs md:text-sm font-medium rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center space-x-1.5"
-            >
-              <KeyRound className="w-4 h-4 text-amber-500" />
-              <span>Mentor Portal</span>
-            </Link>
           </div>
         </div>
       </header>
@@ -299,13 +287,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-2">
-          <span>RBI Grade B Baseline Assessment • Confidential Mentor Platform</span>
-          <div className="flex items-center space-x-4">
-            <Link href="/admin/login" className="hover:text-slate-800 dark:hover:text-slate-200">
-              Mentor Login
-            </Link>
-          </div>
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center">
+          <span>RBI Grade B Baseline Assessment • Confidential Diagnostic Platform</span>
         </div>
       </footer>
     </div>

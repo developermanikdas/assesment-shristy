@@ -3,6 +3,7 @@ import { getAdminSession } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Attempt } from '@/lib/models/Attempt';
 import { ExtendTimeSchema } from '@/lib/validations';
+import { getSectionConfig } from '@/lib/exam-flow';
 
 export async function POST(
   req: NextRequest,
@@ -46,9 +47,18 @@ export async function POST(
       });
     }
 
-    const timer = attempt.sectionTimers.find((t) => t.sectionId === sectionId);
+    let timer = attempt.sectionTimers?.find((t) => t.sectionId === sectionId);
     if (!timer) {
-      return NextResponse.json({ error: 'Section timer not found' }, { status: 404 });
+      const secConfig = getSectionConfig(sectionId);
+      timer = {
+        sectionId,
+        durationSeconds: (secConfig?.timeMin || 20) * 60 + additionalSeconds,
+        bufferUsedSeconds: 0,
+        status: 'active',
+        startedAt: now,
+      };
+      if (!attempt.sectionTimers) attempt.sectionTimers = [];
+      attempt.sectionTimers.push(timer);
     }
 
     // 1. If buffer was active on this section, finalize buffer usage and return to active regular time

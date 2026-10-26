@@ -22,6 +22,7 @@ import {
   Sparkles,
   Award,
   Copy,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function AttemptDetailPage() {
@@ -36,9 +37,27 @@ export default function AttemptDetailPage() {
   // Action states
   const [extendMinutes, setExtendMinutes] = useState(10);
   const [selectedSectionToExtend, setSelectedSectionToExtend] = useState('B1');
-  const [selectedSectionToReopen, setSelectedSectionToReopen] = useState('B1');
+  const [selectedSectionToReopen, setSelectedSectionToReopen] = useState('D');
+  const [reopenMinutes, setReopenMinutes] = useState(30);
+  const [clearResponsesOnReopen, setClearResponsesOnReopen] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
   const [actionErrorMsg, setActionErrorMsg] = useState('');
+
+  const ALL_EXAM_SECTIONS = [
+    { id: 'A', name: 'Section A: Onboarding & Consent' },
+    { id: 'B1', name: 'Section B1: Quantitative Aptitude (MCQ)' },
+    { id: 'B2', name: 'Section B2: Reasoning Ability (MCQ)' },
+    { id: 'B3', name: 'Section B3: English Language (MCQ)' },
+    { id: 'B4', name: 'Section B4: General Awareness (MCQ)' },
+    { id: 'BREAK1', name: 'Break 1: Scheduled Rest Break' },
+    { id: 'C1', name: 'Section C1: ESI Objective (MCQ)' },
+    { id: 'C2', name: 'Section C2: ESI Descriptive (Writing)' },
+    { id: 'C3', name: 'Section C3: Finance & Management (MCQ)' },
+    { id: 'C4', name: 'Section C4: English Descriptive (Writing)' },
+    { id: 'BREAK2', name: 'Break 2: Scheduled Rest Break' },
+    { id: 'D', name: 'Section D: Thinking & Judgement (Reflection)' },
+    { id: 'E', name: 'Section E: Personal Profile & Habits (Chat Mode)' },
+  ];
 
   const fetchAttemptDetail = useCallback(async () => {
     try {
@@ -86,23 +105,52 @@ export default function AttemptDetailPage() {
     }
   };
 
-  const handleReopenSection = async () => {
-    if (!confirm(`Reopen locked section ${selectedSectionToReopen}? The student will be able to re-enter this section.`)) return;
+  const handleReopenSection = async (targetSec?: string, targetMins?: number) => {
+    const secToReopen = targetSec || selectedSectionToReopen;
+    const mins = targetMins !== undefined ? targetMins : reopenMinutes;
+    if (
+      !confirm(
+        `Reopen Section ${secToReopen}? The student will immediately be able to re-enter this section with ${mins} minutes allocated.`
+      )
+    )
+      return;
     try {
       setActionSuccessMsg('');
       setActionErrorMsg('');
       const res = await fetch(`/api/admin/attempts/${id}/reopen-section`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectionId: selectedSectionToReopen }),
+        body: JSON.stringify({
+          sectionId: secToReopen,
+          additionalMinutes: Number(mins),
+          clearResponses: clearResponsesOnReopen,
+        }),
       });
       const resJson = await res.json();
       if (!res.ok) throw new Error(resJson.error || 'Failed to reopen section');
 
-      setActionSuccessMsg(`Reopened section ${selectedSectionToReopen}.`);
+      setActionSuccessMsg(resJson.message || `Reopened section ${secToReopen}.`);
       fetchAttemptDetail();
     } catch (err: any) {
       setActionErrorMsg(err.message || 'Failed to reopen section');
+    }
+  };
+
+  const handleCompleteAttempt = async () => {
+    if (!confirm('Mark candidate assessment as finalized and completed?')) return;
+    try {
+      setActionSuccessMsg('');
+      setActionErrorMsg('');
+      const res = await fetch(`/api/admin/attempts/${id}/complete`, {
+        method: 'POST',
+      });
+      const resJson = await res.json();
+      if (!res.ok) throw new Error(resJson.error || 'Failed to complete attempt');
+
+      setActionSuccessMsg('Assessment status updated to completed.');
+      fetchAttemptDetail();
+    } catch (err: any) {
+      setActionErrorMsg(err.message || 'Failed to complete attempt');
     }
   };
 
@@ -207,6 +255,16 @@ export default function AttemptDetailPage() {
                   <Copy className="w-3 h-3" />
                   <span>Copy Link</span>
                 </button>
+                <a
+                  href={`/take/${attempt.token}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 font-sans font-semibold flex items-center space-x-1 transition-colors"
+                  title="Open candidate assessment in a new tab"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Open Test</span>
+                </a>
               </div>
             </div>
           </div>
@@ -605,89 +663,169 @@ export default function AttemptDetailPage() {
 
             {/* Mentor Interventions & Actions */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-              <h3 className="font-bold text-sm text-white uppercase tracking-wider mb-4">
-                Mentor Exam Interventions
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    Mentor Exam Interventions & Section Authority
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Full authority to reopen any section, grant extra time, or finalize the assessment.
+                  </p>
+                </div>
+                {attempt.status === 'in_progress' && (
+                  <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold flex items-center space-x-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Candidate Assessment Active (Section {attempt.currentSectionId})</span>
+                  </span>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Extend Time */}
-                <div className="p-4 rounded-xl border border-slate-800 bg-slate-800/30 space-y-3">
-                  <span className="text-xs font-bold text-slate-300 block">
-                    Extend Section Duration
-                  </span>
-                  <div className="flex items-center space-x-2">
+                {/* 1. Extend Time on Any Section */}
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-800/30 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-300 block flex items-center space-x-1.5">
+                      <Clock className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Extend Section Duration</span>
+                    </span>
                     <select
                       value={selectedSectionToExtend}
                       onChange={(e) => setSelectedSectionToExtend(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
+                      className="w-full px-2.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white focus:ring-1 focus:ring-blue-500"
                     >
-                      {['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4', 'BUFFER'].map((s) => (
-                        <option key={s} value={s}>
-                          {s === 'BUFFER' ? 'Pooled Buffer Bank' : `Section ${s}`}
+                      <option value="BUFFER">Pooled Buffer Bank (+All Timed)</option>
+                      {ALL_EXAM_SECTIONS.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
                         </option>
                       ))}
                     </select>
 
-                    <select
-                      value={extendMinutes}
-                      onChange={(e) => setExtendMinutes(Number(e.target.value))}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
-                    >
-                      <option value={5}>+5 min</option>
-                      <option value={10}>+10 min</option>
-                      <option value={15}>+15 min</option>
-                      <option value={30}>+30 min</option>
-                    </select>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] text-slate-400">Add:</span>
+                      <select
+                        value={extendMinutes}
+                        onChange={(e) => setExtendMinutes(Number(e.target.value))}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
+                      >
+                        <option value={5}>+5 min</option>
+                        <option value={10}>+10 min</option>
+                        <option value={15}>+15 min</option>
+                        <option value={20}>+20 min</option>
+                        <option value={30}>+30 min</option>
+                        <option value={45}>+45 min</option>
+                        <option value={60}>+60 min</option>
+                      </select>
+                    </div>
                   </div>
+
                   <button
                     onClick={handleExtendTime}
-                    className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs"
+                    className="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors flex items-center justify-center space-x-1.5"
                   >
-                    Apply Time Extension
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Apply Time Extension</span>
                   </button>
                 </div>
 
-                {/* Reopen Section */}
-                <div className="p-4 rounded-xl border border-slate-800 bg-slate-800/30 space-y-3">
-                  <span className="text-xs font-bold text-slate-300 block">
-                    Reopen Locked Section
-                  </span>
-                  <select
-                    value={selectedSectionToReopen}
-                    onChange={(e) => setSelectedSectionToReopen(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
-                  >
-                    {['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'].map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                {/* 2. Reopen ANY Section */}
+                <div className="p-4 rounded-xl border border-amber-900/40 bg-amber-950/10 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 block flex items-center space-x-1.5">
+                        <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Reopen Any Section</span>
+                      </span>
+                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300">
+                        Full Authority
+                      </span>
+                    </div>
+
+                    <select
+                      value={selectedSectionToReopen}
+                      onChange={(e) => setSelectedSectionToReopen(e.target.value)}
+                      className="w-full px-2.5 py-2 rounded-lg border border-amber-800/60 bg-slate-800 text-xs text-white focus:ring-1 focus:ring-amber-500"
+                    >
+                      {ALL_EXAM_SECTIONS.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] text-slate-400">Time:</span>
+                      <select
+                        value={reopenMinutes}
+                        onChange={(e) => setReopenMinutes(Number(e.target.value))}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-xs text-white"
+                      >
+                        <option value={10}>10 minutes</option>
+                        <option value={15}>15 minutes</option>
+                        <option value={20}>20 minutes</option>
+                        <option value={30}>30 minutes</option>
+                        <option value={45}>45 minutes</option>
+                        <option value={60}>60 minutes</option>
+                      </select>
+                    </div>
+
+                    <label className="flex items-center space-x-2 text-[11px] text-slate-400 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={clearResponsesOnReopen}
+                        onChange={(e) => setClearResponsesOnReopen(e.target.checked)}
+                        className="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-0"
+                      />
+                      <span>Clear previous answers (otherwise preserves them)</span>
+                    </label>
+                  </div>
+
                   <button
-                    onClick={handleReopenSection}
-                    className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center justify-center space-x-1"
+                    onClick={() => handleReopenSection()}
+                    className="w-full py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm transition-all"
                   >
                     <Unlock className="w-3.5 h-3.5" />
-                    <span>Reopen Section</span>
+                    <span>Reopen Section {selectedSectionToReopen} (+{reopenMinutes}m)</span>
                   </button>
                 </div>
 
-                {/* Reset & Delete */}
-                <div className="p-4 rounded-xl border border-slate-800 bg-slate-800/30 space-y-3">
-                  <span className="text-xs font-bold text-slate-300 block">
-                    Critical Actions
-                  </span>
-                  <button
-                    onClick={handleResetAttempt}
-                    className="w-full py-2 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center space-x-1"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reset Attempt</span>
-                  </button>
+                {/* 3. Status Management & Critical Actions */}
+                <div className="p-4 rounded-xl border border-slate-800 bg-slate-800/30 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-300 block">
+                      Status & Lifecycle Actions
+                    </span>
+
+                    {attempt.status === 'in_progress' ? (
+                      <button
+                        onClick={handleCompleteAttempt}
+                        className="w-full py-2 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>Finalize / Mark Completed</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleReopenSection('D', 30)}
+                        className="w-full py-2 px-3 rounded-lg border border-amber-700 bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 font-semibold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                      >
+                        <Unlock className="w-3.5 h-3.5" />
+                        <span>Quick Reopen Section D (+30m)</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={handleResetAttempt}
+                      className="w-full py-2 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 font-semibold text-xs flex items-center justify-center space-x-1.5 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset Attempt (Clear All)</span>
+                    </button>
+                  </div>
 
                   <button
                     onClick={handleDeleteAttempt}
-                    className="w-full py-2 px-3 rounded-lg border border-rose-900 text-rose-400 hover:bg-rose-950/60 font-semibold text-xs flex items-center justify-center space-x-1"
+                    className="w-full py-2 px-3 rounded-lg border border-rose-900 text-rose-400 hover:bg-rose-950/60 font-semibold text-xs flex items-center justify-center space-x-1.5 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Hard Delete Attempt</span>
@@ -749,6 +887,30 @@ export default function AttemptDetailPage() {
                       <strong className="text-rose-400 font-mono">{sec.avgTimeWrongSeconds}s</strong>
                     </div>
                   </div>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => handleReopenSection(sec.sectionId, 20)}
+                      className="flex-1 py-1.5 px-2.5 rounded-lg border border-amber-800/70 bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 font-semibold text-xs flex items-center justify-center space-x-1 transition-colors"
+                      title={`Reopen Section ${sec.sectionId} for candidate`}
+                    >
+                      <Unlock className="w-3 h-3" />
+                      <span>Reopen Section</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSectionToExtend(sec.sectionId);
+                        handleExtendTime();
+                      }}
+                      className="py-1.5 px-2.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center space-x-1 transition-colors"
+                      title={`Add ${extendMinutes} min to Section ${sec.sectionId}`}
+                    >
+                      <Clock className="w-3 h-3 text-blue-400" />
+                      <span>+{extendMinutes}m</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -809,6 +971,32 @@ export default function AttemptDetailPage() {
         {/* ==================== TAB 3: SUBJECTIVE & THINKING ==================== */}
         {activeTab === 'subjective' && (
           <div className="space-y-6">
+            {/* Quick Section D Action Banner */}
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
+                  D
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">Section D: Thinking & Judgement Dossier</h4>
+                  <p className="text-xs text-slate-400">
+                    Candidate reflection on MCQs (D01a–f), Fermi estimation, and situational ethics.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleReopenSection('D', 30)}
+                  className="py-2 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>Reopen Section D for Candidate (+30m)</span>
+                </button>
+              </div>
+            </div>
+
             {subjectiveAnswers?.map((item: any) => (
               <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
@@ -909,6 +1097,32 @@ export default function AttemptDetailPage() {
         {/* ==================== TAB 4: PERSONAL PROFILE ==================== */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
+            {/* Quick Section E Action Banner */}
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm">
+                  E
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">Section E: Personal Profile & Habits</h4>
+                  <p className="text-xs text-slate-400">
+                    Candidate study habits, background, distractions, and growth mindset profile.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleReopenSection('E', 20)}
+                  className="py-2 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>Reopen Section E (+20m)</span>
+                </button>
+              </div>
+            </div>
+
             {profileSections && Object.entries(profileSections).map(([secName, items]: [string, any]) => (
               <div key={secName} className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                 <h3 className="font-bold text-sm text-amber-400 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">

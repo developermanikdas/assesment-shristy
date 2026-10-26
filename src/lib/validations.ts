@@ -65,6 +65,8 @@ export const ExtendTimeSchema = z.object({
 
 export const ReopenSectionSchema = z.object({
   sectionId: z.string().min(1),
+  additionalMinutes: z.number().int().positive().max(180).optional(),
+  clearResponses: z.boolean().optional().default(false),
 });
 
 export const UpdateQuestionSchema = z.object({

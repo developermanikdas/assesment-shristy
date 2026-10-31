@@ -71,23 +71,6 @@ export async function GET(
       }
     }
 
-    // Auto-initialize startedAt for initial section if no PIN is configured and attempt is not started
-    if (!attempt.pinHash && attempt.status === 'not_started') {
-      const now = new Date();
-      attempt.status = 'in_progress';
-      attempt.startedAt = now;
-      const initialSecId = attempt.currentSectionId || (examSections[0] ? examSections[0].id : 'A');
-      const timerFirst = attempt.sectionTimers?.find((s: any) => s.sectionId === initialSecId);
-      if (timerFirst && !timerFirst.startedAt) {
-        timerFirst.startedAt = now;
-        timerFirst.status = 'active';
-      }
-      await Attempt.updateOne(
-        { _id: attempt._id },
-        { $set: { status: 'in_progress', startedAt: now, sectionTimers: attempt.sectionTimers } }
-      );
-    }
-
     const currentSectionConfig =
       examSections.find((s) => s.id === attempt.currentSectionId) ||
       getSectionConfig(attempt.currentSectionId) ||

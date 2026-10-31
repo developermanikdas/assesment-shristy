@@ -10,6 +10,7 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle,
+  Play,
 } from 'lucide-react';
 import { QuestionItem, SetData, ConfidenceTag } from '@/types';
 import { ExamHeader } from '@/components/exam/Header';
@@ -51,6 +52,7 @@ export default function TakeAssessmentPage() {
   // Local Timer Mirror
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isStartingExam, setIsStartingExam] = useState(false);
 
   // Telemetry trackers
   const blurStartTimeRef = useRef<number | null>(null);
@@ -443,6 +445,77 @@ export default function TakeAssessmentPage() {
               {isVerifyingPin ? 'Unlocking...' : 'Unlock Assessment'}
             </button>
           </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Start Exam handler
+  const handleStartExam = async () => {
+    setIsStartingExam(true);
+    try {
+      const res = await fetch(`/api/attempt/${token}/start`, { method: 'POST' });
+      if (res.ok) {
+        await loadAssessment();
+      }
+    } catch (e) {
+      console.error('Failed to start exam:', e);
+    } finally {
+      setIsStartingExam(false);
+    }
+  };
+
+  // Not Started: Waiting Room / Start Exam Screen
+  if (attempt.status === 'not_started') {
+    const totalQCount = questions.length;
+    const initialSec = sections[0];
+    const totalTimeMin = sections.reduce((acc, s) => acc + (s.timeMin || 0), 0);
+
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900 text-slate-100">
+        <div className="max-w-md w-full bg-slate-950 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 text-center">
+          <div className="space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-2 border border-emerald-500/20">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">
+              Assessment Ready
+            </span>
+            <h2 className="text-2xl font-extrabold text-white">
+              Welcome, {attempt.nickname}!
+            </h2>
+            <p className="text-xs text-slate-400">
+              {initialSec?.title || 'College Examination'}
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 grid grid-cols-2 gap-3 text-center text-xs font-mono">
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 text-[10px] block">Questions</span>
+              <strong className="text-base text-white">{totalQCount}</strong>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-slate-500 text-[10px] block">Time Limit</span>
+              <strong className="text-base text-amber-400">{totalTimeMin}m</strong>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/30 text-amber-300 text-xs text-left leading-relaxed flex items-start space-x-2">
+            <Clock className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
+            <span>
+              The timer will <strong>not</strong> start until you click the button below. Click when you are ready to begin.
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleStartExam}
+            disabled={isStartingExam}
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-sm shadow-xl shadow-emerald-950/40 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.99] disabled:opacity-50"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>{isStartingExam ? 'Starting...' : 'Start Exam'}</span>
+          </button>
         </div>
       </div>
     );

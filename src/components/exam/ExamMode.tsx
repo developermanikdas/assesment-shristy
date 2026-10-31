@@ -668,11 +668,13 @@ export const ExamMode: React.FC<ExamModeProps> = ({
               </div>
             )}
 
-            {/* 3. LONG TEXT (e.g. W2 Précis) */}
-            {currentQuestion.type === 'long_text' && (
+            {/* 3. LONG TEXT / ESSAY / CASE ANALYSIS */}
+            {(currentQuestion.type === 'long_text' ||
+              currentQuestion.type === 'long_answer' ||
+              currentQuestion.type === 'essay') && (
               <div className="space-y-3 mb-6">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                  <span>Write your précis below (include a suitable title):</span>
+                  <span>Type your detailed answer or case analysis below:</span>
                   <span>
                     Words: <strong className="text-slate-800 dark:text-slate-200">{wordCount}</strong>
                     {currentQuestion.word_limit && (
@@ -683,12 +685,40 @@ export const ExamMode: React.FC<ExamModeProps> = ({
                   </span>
                 </div>
                 <textarea
-                  rows={10}
+                  rows={12}
                   spellCheck={false}
                   onPaste={handlePaste}
                   value={writingText}
                   onChange={(e) => handleWritingChange(e.target.value)}
-                  placeholder={t.writePlaceholder}
+                  placeholder={t.writePlaceholder || 'Type your comprehensive answer here...'}
+                  className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                />
+              </div>
+            )}
+
+            {/* 4. SHORT ANSWER / CONCISE EXPLANATION */}
+            {(currentQuestion.type === 'short_answer' ||
+              currentQuestion.type === 'short_text' ||
+              currentQuestion.type === 'text') && (
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                  <span>Type your concise answer below:</span>
+                  <span>
+                    Words: <strong className="text-slate-800 dark:text-slate-200">{wordCount}</strong>
+                    {currentQuestion.word_limit && (
+                      <span className="ml-1 opacity-80">
+                        (target: {currentQuestion.word_limit[0]}–{currentQuestion.word_limit[1]} words)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <textarea
+                  rows={5}
+                  spellCheck={false}
+                  onPaste={handlePaste}
+                  value={writingText}
+                  onChange={(e) => handleWritingChange(e.target.value)}
+                  placeholder="Type your concise answer here..."
                   className="w-full p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                 />
               </div>

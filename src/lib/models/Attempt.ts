@@ -14,6 +14,7 @@ export interface IAttempt {
   token: string;
   pinHash?: string;
   nickname: string;
+  examId?: string;
   status: 'not_started' | 'in_progress' | 'completed' | 'abandoned';
   currentPartId: string;
   currentSectionId: string;
@@ -55,6 +56,7 @@ const AttemptSchema = new Schema<IAttempt>(
     token: { type: String, required: true, unique: true, index: true },
     pinHash: { type: String },
     nickname: { type: String, required: true },
+    examId: { type: String, default: 'rbi_baseline', index: true },
     status: {
       type: String,
       enum: ['not_started', 'in_progress', 'completed', 'abandoned'],

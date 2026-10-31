@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getAdminSession, hashPassword } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Attempt } from '@/lib/models/Attempt';
+import { Exam } from '@/lib/models/Exam';
 import { ResponseModel } from '@/lib/models/Response';
 import { CreateAttemptSchema } from '@/lib/validations';
 import { EXAM_SECTIONS } from '@/lib/exam-flow';
@@ -35,6 +36,7 @@ export async function GET() {
           id: att._id.toString(),
           token: att.token,
           nickname: att.nickname,
+          examId: att.examId || 'rbi_baseline',
           hasPin: !!att.pinHash,
           status: att.status,
           currentPartId: att.currentPartId,
@@ -71,6 +73,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { nickname, pin } = parsed.data;
+    const selectedExamId = body.examId || 'rbi_baseline';
 
     await connectDB();
 
@@ -82,22 +85,46 @@ export async function POST(req: NextRequest) {
       pinHash = await hashPassword(pin.trim());
     }
 
-    // Initialize all section timers with their planned durations
-    const sectionTimers = EXAM_SECTIONS.map((sec) => ({
-      sectionId: sec.id,
-      durationSeconds: sec.timeMin * 60,
-      bufferUsedSeconds: 0,
-      status: 'not_started' as const,
-    }));
+    let sectionTimers: any[] = [];
+    let initialPartId = 'A';
+    let initialSectionId = 'A';
+    let pooledBuffer = 20 * 60;
+    let examTitle = 'RBI Grade B Baseline Assessment';
+
+    if (selectedExamId && selectedExamId !== 'rbi_baseline') {
+      const customExam = await Exam.findOne({ examId: selectedExamId }).lean();
+      if (customExam && customExam.sections && customExam.sections.length > 0) {
+        examTitle = customExam.title;
+        initialPartId = customExam.sections[0].id;
+        initialSectionId = customExam.sections[0].id;
+        pooledBuffer = 5 * 60;
+        sectionTimers = customExam.sections.map((sec: any) => ({
+          sectionId: sec.id,
+          durationSeconds: (sec.timeMinutes || 15) * 60,
+          bufferUsedSeconds: 0,
+          status: 'not_started' as const,
+        }));
+      }
+    }
+
+    if (sectionTimers.length === 0) {
+      sectionTimers = EXAM_SECTIONS.map((sec) => ({
+        sectionId: sec.id,
+        durationSeconds: sec.timeMin * 60,
+        bufferUsedSeconds: 0,
+        status: 'not_started' as const,
+      }));
+    }
 
     const attempt = await Attempt.create({
       token,
       pinHash,
       nickname: nickname.trim(),
+      examId: selectedExamId,
       status: 'not_started',
-      currentPartId: 'A',
-      currentSectionId: 'A',
-      pooledBufferTotalSeconds: 20 * 60, // 20 minutes
+      currentPartId: initialPartId,
+      currentSectionId: initialSectionId,
+      pooledBufferTotalSeconds: pooledBuffer,
       pooledBufferUsedSeconds: 0,
       sectionTimers,
       notepad: '',
@@ -119,6 +146,8 @@ export async function POST(req: NextRequest) {
         id: attempt._id.toString(),
         token,
         nickname: attempt.nickname,
+        examId: selectedExamId,
+        examTitle,
         hasPin: !!pinHash,
         pin: pin || null,
         privateLink,

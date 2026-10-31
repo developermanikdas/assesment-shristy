@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Attempt } from '@/lib/models/Attempt';
+import { Exam } from '@/lib/models/Exam';
 import { Question } from '@/lib/models/Question';
 import { AnswerKey } from '@/lib/models/AnswerKey';
 import { ResponseModel } from '@/lib/models/Response';
@@ -8,8 +9,8 @@ import { SectionTimerActionSchema } from '@/lib/validations';
 import {
   EXAM_SECTIONS,
   getSectionConfig,
-  getNextSection,
   computeServerTimer,
+  SectionConfig,
 } from '@/lib/exam-flow';
 import { generateD01ReflectionItems, CandidateMCQ } from '@/lib/reflection';
 
@@ -34,12 +35,31 @@ export async function POST(
       return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
     }
 
-    const secConfig = getSectionConfig(sectionId);
+    const isCustomExam = attempt.examId && attempt.examId !== 'rbi_baseline';
+    let examSections: SectionConfig[] = EXAM_SECTIONS;
+
+    if (isCustomExam) {
+      const customExam = await Exam.findOne({ examId: attempt.examId }).lean();
+      if (customExam && customExam.sections && customExam.sections.length > 0) {
+        examSections = customExam.sections.map((s: any) => ({
+          id: s.id,
+          partId: s.id,
+          title: s.title,
+          timeMin: s.timeMinutes || 15,
+          isTimed: true,
+          isBreak: false,
+          isSoftTimer: false,
+        }));
+      }
+    }
+
+    const secConfig =
+      examSections.find((s) => s.id === sectionId) || getSectionConfig(sectionId);
     if (!secConfig) {
       return NextResponse.json({ error: 'Unknown section' }, { status: 400 });
     }
 
-    const secIndex = EXAM_SECTIONS.findIndex((s) => s.id === sectionId);
+    const secIndex = examSections.findIndex((s) => s.id === sectionId);
     if (secIndex === -1) {
       return NextResponse.json({ error: 'Unknown section' }, { status: 400 });
     }
@@ -61,7 +81,7 @@ export async function POST(
     if (action === 'start') {
       // NEVER start a section before previous one is submitted
       if (secIndex > 0) {
-        const prevSec = EXAM_SECTIONS[secIndex - 1];
+        const prevSec = examSections[secIndex - 1];
         const prevTimer = attempt.sectionTimers.find((t) => t.sectionId === prevSec.id);
         if (!prevTimer || prevTimer.status !== 'submitted') {
           return NextResponse.json(
@@ -79,51 +99,59 @@ export async function POST(
       }
       attempt.currentSectionId = sectionId;
       attempt.currentPartId = secConfig.partId;
-
-      if (attempt.status === 'not_started' || !attempt.startedAt) {
+      if (attempt.status === 'not_started') {
         attempt.status = 'in_progress';
         attempt.startedAt = now;
       }
-
-      // If starting Part A, ensure Part A timer has startedAt
-      if (sectionId === 'A') {
-        timer.startedAt = timer.startedAt || now;
-        timer.status = 'active';
-        attempt.startedAt = attempt.startedAt || now;
-      }
     }
 
-    // 2. ACTION: USE BUFFER
+    // 2. ACTION: USE_BUFFER
     else if (action === 'use_buffer') {
-      const remainingBuffer = Math.max(
+      if (timer.status === 'submitted' || timer.status === 'locked') {
+        return NextResponse.json({ error: 'Section already submitted or locked' }, { status: 400 });
+      }
+
+      const totalPooledRemaining = Math.max(
         0,
         (attempt.pooledBufferTotalSeconds || 1200) - (attempt.pooledBufferUsedSeconds || 0)
       );
 
-      if (remainingBuffer <= 0) {
-        return NextResponse.json({ error: 'No pooled buffer time remaining' }, { status: 400 });
+      if (totalPooledRemaining <= 0) {
+        return NextResponse.json({ error: 'No pooled buffer remaining' }, { status: 400 });
       }
 
       timer.status = 'buffer_active';
-      (timer as any).bufferStartedAt = now;
+      timer.bufferStartedAt = now;
     }
 
-    // 3. ACTION: STOP BUFFER OR SUBMIT
-    else if (action === 'stop_buffer' || action === 'submit') {
-      // Calculate any active buffer usage
-      if (timer.status === 'buffer_active' && (timer as any).bufferStartedAt) {
-        const bufStartMs = new Date((timer as any).bufferStartedAt).getTime();
-        const bufSeconds = Math.max(0, Math.floor((now.getTime() - bufStartMs) / 1000));
-        timer.bufferUsedSeconds = (timer.bufferUsedSeconds || 0) + bufSeconds;
-        attempt.pooledBufferUsedSeconds = (attempt.pooledBufferUsedSeconds || 0) + bufSeconds;
-        (timer as any).bufferStartedAt = undefined;
+    // 3. ACTION: STOP_BUFFER
+    else if (action === 'stop_buffer') {
+      if (timer.status === 'buffer_active' && timer.bufferStartedAt) {
+        const bufferElapsed = Math.floor((now.getTime() - new Date(timer.bufferStartedAt).getTime()) / 1000);
+        timer.bufferUsedSeconds = (timer.bufferUsedSeconds || 0) + bufferElapsed;
+        attempt.pooledBufferUsedSeconds = (attempt.pooledBufferUsedSeconds || 0) + bufferElapsed;
+        timer.bufferStartedAt = undefined;
+        timer.status = 'active';
+      }
+    }
+
+    // 4. ACTION: SUBMIT
+    else if (action === 'submit') {
+      // Finalize any running buffer time
+      if (timer.status === 'buffer_active' && timer.bufferStartedAt) {
+        const bufferElapsed = Math.floor((now.getTime() - new Date(timer.bufferStartedAt).getTime()) / 1000);
+        timer.bufferUsedSeconds = (timer.bufferUsedSeconds || 0) + bufferElapsed;
+        attempt.pooledBufferUsedSeconds = (attempt.pooledBufferUsedSeconds || 0) + bufferElapsed;
+        timer.bufferStartedAt = undefined;
       }
 
       timer.status = 'submitted';
       timer.submittedAt = now;
 
       // Advance to next section
-      const nextSec = getNextSection(sectionId);
+      const nextIndex = secIndex + 1;
+      const nextSec = nextIndex < examSections.length ? examSections[nextIndex] : null;
+
       if (nextSec) {
         attempt.currentSectionId = nextSec.id;
         attempt.currentPartId = nextSec.partId;
@@ -144,8 +172,8 @@ export async function POST(
           nextTimer.status = 'active';
         }
 
-        // If advancing to Part D, generate D01 reflection items now if not already generated
-        if (nextSec.id === 'D' && (!attempt.d01Items || attempt.d01Items.length === 0)) {
+        // If advancing to Part D on RBI baseline, generate D01 reflection items
+        if (nextSec.id === 'D' && !isCustomExam && (!attempt.d01Items || attempt.d01Items.length === 0)) {
           const rawQuestions = await Question.find({}).lean();
           const d01Template = rawQuestions.find((q) => q.id === 'D01');
           if (d01Template) {
@@ -187,14 +215,16 @@ export async function POST(
     await attempt.save();
 
     // Recompute current server timer
-    const updatedSecConfig = getSectionConfig(attempt.currentSectionId) || secConfig;
-    const currentTimerData = attempt.sectionTimers.find(
+    const updatedSecConfig =
+      examSections.find((s) => s.id === attempt.currentSectionId) || secConfig;
+
+    const updatedTimerData = attempt.sectionTimers.find(
       (t) => t.sectionId === attempt.currentSectionId
     );
 
-    const computed = computeServerTimer(
+    const timerResult = computeServerTimer(
       updatedSecConfig,
-      currentTimerData as any,
+      updatedTimerData as any,
       attempt.pooledBufferTotalSeconds || 1200,
       attempt.pooledBufferUsedSeconds || 0,
       now
@@ -204,13 +234,11 @@ export async function POST(
       success: true,
       currentSectionId: attempt.currentSectionId,
       currentPartId: attempt.currentPartId,
-      status: attempt.status,
-      timer: computed,
-      pooledBufferUsedSeconds: attempt.pooledBufferUsedSeconds,
-      pooledBufferTotalSeconds: attempt.pooledBufferTotalSeconds,
+      attemptStatus: attempt.status,
+      timer: timerResult,
     });
   } catch (err: any) {
-    console.error('Section timer error:', err);
-    return NextResponse.json({ error: 'Failed to update section timer' }, { status: 500 });
+    console.error('Section timer action error:', err);
+    return NextResponse.json({ error: 'Failed to process timer action' }, { status: 500 });
   }
 }

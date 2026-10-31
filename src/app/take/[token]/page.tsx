@@ -488,8 +488,9 @@ export default function TakeAssessmentPage() {
   // Check if current mode is Break
   const isBreakSection = currentSectionId === 'BREAK1' || currentSectionId === 'BREAK2';
 
-  // Check if Chat Mode (Parts A, D, E) or CBT Exam Mode (Parts B, C)
-  const isChatMode = ['A', 'D', 'E'].includes(currentPartId) && !isBreakSection;
+  // Check if Chat Mode (Parts A, D, E for RBI baseline) or CBT Exam Mode
+  const isCustomExam = attempt.examId && attempt.examId !== 'rbi_baseline';
+  const isChatMode = !isCustomExam && ['A', 'D', 'E'].includes(currentPartId) && !isBreakSection;
 
   const currentTimerData = attempt.timer;
   const isBufferActive = currentTimerData?.status === 'buffer_active';

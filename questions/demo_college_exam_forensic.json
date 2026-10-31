@@ -1,0 +1,309 @@
+{
+  "meta": {
+    "exam_id": "demo_forensic_college_2026",
+    "title": "Forensic Science & Medico-Legal College Assessment",
+    "subject": "Forensic Medicine & Criminalistics",
+    "version": "1.0",
+    "instructions": "This paper assesses your fundamental knowledge, analytical reasoning, and procedural competence in forensic science. The assessment consists of 10 Multiple Choice Questions (1 mark each), 4 Short Answer Questions (5 marks each), and 2 Long Essay / Case Study Questions (10 marks each). Review your answers before final submission.",
+    "total_marks": 50,
+    "negative_marking": 0.25,
+    "duration_minutes": 50,
+    "time_planning_policy": {
+      "mcq_minutes_per_item": 1.5,
+      "short_answer_minutes_per_item": 4.0,
+      "long_answer_minutes_per_item": 12.0,
+      "buffer_minutes": 5
+    },
+    "confidence_tracking": true,
+    "confidence_tags": ["Sure", "Maybe", "Guess"]
+  },
+  "sections": [
+    {
+      "id": "SEC_A",
+      "title": "Section A: Objective & Forensic MCQs",
+      "description": "Select the single best answer. Each correct answer earns 1 mark; incorrect answers incur a 0.25 negative mark.",
+      "time_minutes": 15,
+      "items": [
+        {
+          "id": "MCQ01",
+          "type": "mcq",
+          "topic": "Thanatology",
+          "stem": "Which of the following is considered the earliest physical change occurring in a human body after death?",
+          "opts": [
+            "Loss of corneal reflex and primary muscular flaccidity",
+            "Establishment of full rigor mortis",
+            "Greenish discoloration of the right iliac fossa",
+            "Adipocere formation"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Primary muscular flaccidity and loss of corneal/pupillary reflexes occur immediately at somatic death, preceding algor mortis, livor mortis, and rigor mortis."
+        },
+        {
+          "id": "MCQ02",
+          "type": "mcq",
+          "topic": "Trace Evidence",
+          "stem": "Locard's Exchange Principle is famously summarized as which foundational forensic maxim?",
+          "opts": [
+            "Every contact leaves a trace",
+            "Corpus delicti must precede indictment",
+            "Innocent until proven guilty",
+            "DNA cannot be forged"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 45,
+          "explanation": "Formulated by Edmond Locard, the principle asserts that whenever two entities come into contact, a mutual transfer of physical matter occurs."
+        },
+        {
+          "id": "MCQ03",
+          "type": "mcq",
+          "topic": "Dactyloscopy",
+          "stem": "In fingerprint classification, which pattern type contains zero triradii (deltas)?",
+          "opts": [
+            "Plain Arch",
+            "Ulnar Loop",
+            "Plain Whorl",
+            "Accidental Whorl"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Plain arches and tented arches have ridges that enter from one side and flow out the other without recurving or forming a true triradius (delta)."
+        },
+        {
+          "id": "MCQ04",
+          "type": "mcq",
+          "topic": "Serology",
+          "stem": "The presumptive Kastle-Meyer color test for blood utilizes which chemical indicator?",
+          "opts": [
+            "Phenolphthalein",
+            "Benzidine",
+            "Luminol",
+            "Leucomalachite Green"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "The Kastle-Meyer test uses reduced phenolphthalein and hydrogen peroxide, catalyzing a vivid pink coloration in the presence of hemoglobin peroxidase activity."
+        },
+        {
+          "id": "MCQ05",
+          "type": "mcq",
+          "topic": "Ballistics",
+          "stem": "Powder tattooing (stippling) surrounding a firearm entrance wound is diagnostic of which range of fire?",
+          "opts": [
+            "Contact range",
+            "Close / Intermediate range",
+            "Distant / Beyond intermediate range",
+            "Ricochet trajectory"
+          ],
+          "ans": "B",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 75,
+          "explanation": "Stippling results from unburnt and partially burnt propellant powder grains impacting and embedding into the dermis at intermediate range (typically 1 to 3 feet)."
+        },
+        {
+          "id": "MCQ06",
+          "type": "mcq",
+          "topic": "Toxicology",
+          "stem": "Cherry-red post-mortem hypostasis (lividity) is classically characteristic of fatal poisoning by which substance?",
+          "opts": [
+            "Carbon Monoxide",
+            "Potassium Cyanide",
+            "Phosphorus",
+            "Arsenic Trioxide"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Carboxyhemoglobin imparts a bright cherry-red hue to blood and dependent livid tissues; cyanide causes a characteristic brick-red / pinkish discoloration."
+        },
+        {
+          "id": "MCQ07",
+          "type": "mcq",
+          "topic": "Entomology",
+          "stem": "Which insect family is typically the first to colonize an exposed human corpse in terrestrial environments, assisting in post-mortem interval (PMI) estimation?",
+          "opts": [
+            "Calliphoridae (Blow flies)",
+            "Silphidae (Carrion beetles)",
+            "Dermestidae (Skin beetles)",
+            "Muscidae (House flies)"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Calliphoridae (blowflies) arrive within minutes to hours after death, laying eggs around natural orifices or open wounds."
+        },
+        {
+          "id": "MCQ08",
+          "type": "mcq",
+          "topic": "Forensic Genetics",
+          "stem": "Standard forensic human individual identification protocols rely primarily on analyzing which genomic feature?",
+          "opts": [
+            "Short Tandem Repeats (STRs)",
+            "Single Nucleotide Polymorphisms (SNPs) on mitochondrial D-loop only",
+            "Restriction Fragment Length Polymorphism (RFLP) exclusively",
+            "Telomeric tandem hexamer repeats"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 75,
+          "explanation": "Commercial forensic kits (e.g., CODIS 20 loci) target polymorphic Short Tandem Repeats (STRs) due to their high discriminating power and suitability for degraded DNA."
+        },
+        {
+          "id": "MCQ09",
+          "type": "mcq",
+          "topic": "Traumatology",
+          "stem": "Tissue bridging across the base or edges of a wound is pathognomonic of which mechanical injury type?",
+          "opts": [
+            "Laceration (Blunt force injury)",
+            "Incised wound (Sharp cutting force)",
+            "Stab wound (Puncturing force)",
+            "Chop wound with keen edge"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Blunt impact crushes and tears skin, leaving intact nerve filaments, elastic fibers, and small blood vessels bridging the margins. Sharp incised wounds cleanly sever these structures."
+        },
+        {
+          "id": "MCQ10",
+          "type": "mcq",
+          "topic": "Asphyxia",
+          "stem": "In classical hanging, Tardieu spots observed on the pleura and epicardium represent which pathophysiological phenomenon?",
+          "opts": [
+            "Subpleural and subpericardial petechial hemorrhages",
+            "Anthracotic pigment deposits",
+            "Fat emboli lodging in pulmonary capillaries",
+            "Post-mortem bacterial hemolysis"
+          ],
+          "ans": "A",
+          "marks": 1,
+          "neg": 0.25,
+          "expected_seconds": 60,
+          "explanation": "Tardieu spots are capillary petechial hemorrhages arising from acute veno-capillary congestion and hypoxia associated with mechanical asphyxia."
+        }
+      ]
+    },
+    {
+      "id": "SEC_B",
+      "title": "Section B: Short Answer Questions",
+      "description": "Answer all 4 questions succinctly. Focus on precise definitions, legal significance, and key distinguishing factors. Each question carries 5 marks.",
+      "time_minutes": 16,
+      "items": [
+        {
+          "id": "SA01",
+          "type": "short_answer",
+          "topic": "Crime Scene Investigation",
+          "stem": "Explain the concept of 'Chain of Custody' in forensic science and discuss the consequences of a documented gap in this chain during criminal trial proceedings.",
+          "marks": 5,
+          "word_limit": [80, 180],
+          "expected_seconds": 240,
+          "model_answer": "Chain of Custody is the meticulous, unbroken chronological documentation tracing the collection, custody, control, transfer, analysis, and disposition of physical or electronic evidence. Each individual who handles the evidence must sign with date, time, purpose, and condition of the seal. Legal consequences of a break: 1) The defense can challenge authenticity and integrity; 2) Potential contamination, tampering, or substitution cannot be refuted; 3) The trial court may deem the evidence inadmissible under rules of evidence, jeopardizing the prosecution case.",
+          "rubric": {
+            "definition_and_components": 2,
+            "procedural_requirements": 1,
+            "legal_consequences_inadmissibility": 2
+          }
+        },
+        {
+          "id": "SA02",
+          "type": "short_answer",
+          "topic": "Thanatology",
+          "stem": "What is Rigor Mortis? Outline the order of its appearance and disappearance in the human body (Nysten's Law), including average time frames in temperate conditions.",
+          "marks": 5,
+          "word_limit": [80, 180],
+          "expected_seconds": 240,
+          "model_answer": "Rigor Mortis is the state of muscular stiffening occurring after death due to the depletion of adenosine triphosphate (ATP), preventing detachment of actin-myosin cross-bridges. According to Nysten's Law, rigor generally appears in a craniocaudal progression: beginning in involuntary muscles (heart, pupils), then jaw and eyelids (1-2 hours), face and neck (3-4 hours), upper limbs and trunk (6-8 hours), and finally lower limbs (10-12 hours). It remains complete for ~12 hours and disappears in the same sequence over the subsequent 12 hours as autolytic protein degradation begins (Rule of 12s in temperate climates).",
+          "rubric": {
+            "biochemical_mechanism_atp": 1.5,
+            "progression_sequence_nystens_law": 2,
+            "time_frames_and_resolution": 1.5
+          }
+        },
+        {
+          "id": "SA03",
+          "type": "short_answer",
+          "topic": "Traumatology",
+          "stem": "Differentiate between an Antemortem and a Postmortem injury across four distinct criteria: hemorrhage, vital reaction, wound margins, and microscopic histopathology.",
+          "marks": 5,
+          "word_limit": [80, 180],
+          "expected_seconds": 240,
+          "model_answer": "1) Hemorrhage: Antemortem wounds show profuse arterial spurting, deep tissue infiltration, and firmly adherent coagulated blood; postmortem wounds show minimal passive oozing without true coagulation. 2) Vital Reaction: Antemortem wounds exhibit active hyperemic flare, inflammatory exudate, and cellular infiltration; postmortem injuries lack inflammatory vital reaction. 3) Wound Margins: Antemortem margins are swollen, gaping due to vital elasticity, and discolored; postmortem edges remain pale, collapsed, and non-gaping. 4) Histopathology: Antemortem specimens reveal marginal polymorphonuclear leukocyte infiltration, enzymatic changes, and fibrin deposition within 1-4 hours; postmortem wounds lack cellular response.",
+          "rubric": {
+            "hemorrhage_and_coagulation": 1.25,
+            "vital_reaction_and_inflammation": 1.25,
+            "wound_margins_and_retraction": 1.25,
+            "histopathology_and_enzymes": 1.25
+          }
+        },
+        {
+          "id": "SA04",
+          "type": "short_answer",
+          "topic": "Forensic Toxicology",
+          "stem": "Describe the clinical signs, autopsy findings, and diagnostic post-mortem odors associated with acute Cyanide toxicity.",
+          "marks": 5,
+          "word_limit": [80, 180],
+          "expected_seconds": 240,
+          "model_answer": "Mechanism: Cyanide halts cellular respiration by inhibiting cytochrome c oxidase. Clinical signs: Rapid dizziness, hyperpnea followed by dyspnea, convulsions, cardiovascular collapse, and respiratory arrest within minutes. Autopsy findings: Bright brick-red / pinkish lividity and organ congestion due to unextracted arterial oxygen in venous blood; gastric mucosa shows erosions and mucosal edema if potassium/sodium cyanide salts were ingested. Odor: Characteristic 'bitter almond' odor emanating from opened body cavities and gastric contents (detectable only by genetically capable individuals).",
+          "rubric": {
+            "biochemical_mechanism_symptoms": 1.5,
+            "autopsy_findings_lividity": 2,
+            "characteristic_odor_and_caution": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "SEC_C",
+      "title": "Section C: Long Essay & Case Analysis",
+      "description": "Answer both comprehensive questions thoroughly. Demonstrate deep conceptual understanding, structured methodology, and medico-legal reasoning. Each question carries 10 marks.",
+      "time_minutes": 24,
+      "items": [
+        {
+          "id": "LA01",
+          "type": "long_answer",
+          "topic": "Forensic Ballistics & Medico-Legal Examination",
+          "stem": "A 32-year-old individual is brought for medicolegal autopsy with two perforating firearm wounds: one on the right temporal region and another on the left parietal region. Provide a comprehensive framework to determine:\n1. Which wound is the Entrance and which is the Exit, detailing key anatomical and physical characteristics (abrasion collar, grease collar, beveling of skull tables, burning, tattooing).\n2. Estimation of the range of fire (Contact, Close, Intermediate, Distant).\n3. Essential medicolegal criteria to differentiate between suicidal, homicidal, and accidental gunshot deaths.",
+          "marks": 10,
+          "word_limit": [250, 600],
+          "expected_seconds": 720,
+          "model_answer": "Part 1: Distinguishing Entrance vs. Exit Wounds:\n- Entrance Wound: Characterized by an inverted epidermal margin, circular to oval defect corresponding to caliber, an abrasion collar (denuded epithelium), a grease/dirt collar (bullet wipe), and internal beveling of the inner skull table (cone-shaped expansion inward).\n- Exit Wound: Everted edges, irregular/slit-like or stellate shape, absence of abrasion collar and bullet wipe, and external beveling of the outer skull table.\n\nPart 2: Range of Fire Estimation:\n- Contact Range: Muzzle imprint on skin, soot and unburned powder inside the wound tract, blast undermining, cherry-red carboxyhemoglobin coloration along wound track, stellate tearing over bony surfaces.\n- Close Range (<6 inches): Dense flame scorching (singeing of hair), heavy soot deposition surrounding the wound margin.\n- Intermediate Range (6 inches to ~3 feet): Powder tattooing / stippling (punctate abrasion caused by embedded unburnt propellant grains) without active scorching.\n- Distant Range (>3 feet): Only circular wound with abrasion and grease collar; no scorching, soot, or tattooing.\n\nPart 3: Medico-Legal Manner of Death Differentiation:\n- Suicide: Wound situated in accessible anatomical 'sites of election' (right temple for right-handed, mouth, precordium); contact or near-contact range; presence of weapon at scene; cadaveric spasm gripping firearm; absence of defense wounds; presence of suicide note.\n- Homicide: Inaccessible trajectory or unusual angle; distant or intermediate range without weapon found at scene; presence of multiple gunshot wounds, defense wounds on forearms/hands, or signs of physical struggle.\n- Accident: Irregular trajectory, ricochet marks, absence of intent or motive, cleaning/handling history.",
+          "rubric": {
+            "entrance_vs_exit_features": 3,
+            "skull_table_beveling_mechanics": 1.5,
+            "range_of_fire_differentiation": 3,
+            "suicide_vs_homicide_criteria": 2.5
+          }
+        },
+        {
+          "id": "LA02",
+          "type": "long_answer",
+          "topic": "Crime Scene Management & Processing",
+          "stem": "You are appointed as the Lead Forensic Investigator dispatched to an indoor death scene involving suspected foul play with bloodletting injuries. Formulate an end-to-end Standard Operating Protocol covering:\n1. Initial scene securing, golden hour containment, and safety measures.\n2. Systematic search patterns suitable for indoor spaces.\n3. Documentation hierarchy (Notes, Photography, Videography, Rough and Finished Sketching).\n4. Collection, packaging, and preservation of biological evidence (liquid and dried bloodstains) to prevent degradation and contamination.",
+          "marks": 10,
+          "word_limit": [250, 600],
+          "expected_seconds": 720,
+          "model_answer": "1. Initial Scene Securing & Golden Hour Protocol:\n- Establish inner (hot zone) and outer perimeters using barrier tape; enforce a single entry/exit log.\n- Exclude non-essential personnel, media, and family; don full PPE (Tyvek suit, double nitrile gloves, shoe covers, mask) to prevent contamination.\n- Verify signs of life without disturbing physical evidence; ensure chemical, electrical, and structural safety.\n\n2. Search Patterns for Indoor Environments:\n- Employ Zone / Quadrant search for compartmentalized rooms, or Strip/Lane and Spiral search patterns for larger unobstructed floors.\n- Search systematically from floor surfaces, furniture, walls, to ceilings, illuminating with oblique white and alternate light sources (ALS 365-450 nm).\n\n3. Documentation Hierarchy:\n- Written Log: Chronological field notes of environmental conditions (temperature, lights on/off, odors, windows/doors locked/unlocked).\n- Photography: Overall (wide establishing shots with landmarks), Mid-range (spatial orientation relative to room), Close-up (90-degree perpendicular with ABFO scale and photo placard).\n- Videography: Continuous slow panning scan before physical disturbance, without spoken speculative audio.\n- Sketching: Rough field sketch with accurate baseline or triangulation measurements, compass orientation, followed by finalized CAD/scaled diagram.\n\n4. Biological Evidence Collection & Packaging:\n- Dried Bloodstains: Collect by scraping with sterile scalpel into paper bindle, or swabbing with sterile cotton swab moistened with sterile deionized water; air-dry thoroughly at room temperature.\n- Wet / Saturated Garments: Air-dry on clean butcher paper inside a secure dry room; never package while wet due to rapid bacterial putrefaction.\n- Packaging Material: Always use breathable porous paper bags or cardboard boxes—never airtight plastic bags which trap moisture and promote mold degradation.\n- Sealing: Affix tamper-evident tape across all openings, initial across seal edge, and immediately document Chain of Custody label.",
+          "rubric": {
+            "perimeter_security_and_containment": 2,
+            "search_methodology_and_als": 2,
+            "four_tier_documentation_protocol": 3,
+            "biological_evidence_preservation": 3
+          }
+        }
+      ]
+    }
+  ]
+}

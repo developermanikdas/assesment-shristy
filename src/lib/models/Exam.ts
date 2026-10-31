@@ -103,3 +103,4 @@ const ExamSchema = new Schema<IExam>(
 
 export const Exam: Model<IExam> =
   mongoose.models.Exam || mongoose.model<IExam>('Exam', ExamSchema);
+

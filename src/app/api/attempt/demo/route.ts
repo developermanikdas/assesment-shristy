@@ -81,3 +81,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create demo attempt' }, { status: 500 });
   }
 }
+
